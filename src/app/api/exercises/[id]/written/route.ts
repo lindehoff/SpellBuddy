@@ -8,7 +8,8 @@ export async function POST(
 ) {
   try {
     // Get the exercise ID from the URL parameter
-    const exerciseId = parseInt(context.params.id);
+    const { id } = context.params;
+    const exerciseId = parseInt(id);
     
     if (isNaN(exerciseId)) {
       return NextResponse.json(

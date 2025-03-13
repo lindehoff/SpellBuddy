@@ -26,7 +26,7 @@ function SpeechRecognitionProvider({ children }: { children: React.ReactNode }) 
 
   // Only render children on the client
   if (!hasMounted) {
-    return <div className="flex justify-center py-4">Loading speech recognition...</div>;
+    return <div className="flex justify-center py-4 opacity-80">Loading speech recognition...</div>;
   }
 
   return <>{children}</>;
@@ -64,6 +64,8 @@ function PracticePageInner() {
       try {
         setIsLoadingExercise(true);
         setExercise(null); // Clear previous exercise while loading
+        resetTranscript(); // Clear any previous transcript
+        setWrittenTranslation(''); // Clear any previous written translation
         
         const response = await fetch('/api/exercises', {
           method: 'POST',
@@ -93,7 +95,7 @@ function PracticePageInner() {
     if (user) {
       loadExercise();
     }
-  }, [user, router]);
+  }, [user, router, resetTranscript]);
 
   // Update spoken translation when transcript changes
   useEffect(() => {
@@ -245,9 +247,9 @@ function PracticePageInner() {
     if (isLoadingExercise) {
       return (
         <div className="flex flex-col items-center justify-center">
-          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-          <p className="text-xl font-medium text-indigo-700">Creating your exercise...</p>
-          <p className="text-gray-600 mt-2">This may take a moment as we personalize it for you.</p>
+          <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mb-6"></div>
+          <p className="text-xl font-medium gradient-text">Creating your exercise...</p>
+          <p className="opacity-80 mt-2">This may take a moment as we personalize it for you ✨</p>
         </div>
       );
     }
@@ -256,7 +258,7 @@ function PracticePageInner() {
       case PracticeStep.Loading:
         return (
           <div className="flex flex-col items-center justify-center">
-            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-lg">Loading your exercise...</p>
           </div>
         );
@@ -264,15 +266,15 @@ function PracticePageInner() {
       case PracticeStep.ShowSwedishText:
         return (
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-6">Translate this text</h2>
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8 text-xl border border-gray-300">
-              <p className="text-gray-900 font-medium">{exercise?.original}</p>
+            <h2 className="text-2xl font-bold gradient-text mb-6">Translate this text 🔄</h2>
+            <div className="glass-card p-6 rounded-xl mb-8 text-xl">
+              <p className="font-medium">{exercise?.original}</p>
             </div>
             <button
               onClick={() => setStep(PracticeStep.SpeakTranslation)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
+              className="shine-button text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 hover:scale-105"
             >
-              I'm ready to translate
+              I'm ready to translate 🎙️
             </button>
           </div>
         );
@@ -280,21 +282,21 @@ function PracticePageInner() {
       case PracticeStep.SpeakTranslation:
         return (
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-6">Speak your translation</h2>
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-300">
-              <p className="text-gray-700 mb-4 font-medium">Original text:</p>
-              <p className="text-gray-900 mb-8 font-medium">{exercise?.original}</p>
+            <h2 className="text-2xl font-bold gradient-text mb-6">Speak your translation 🎙️</h2>
+            <div className="glass-card p-6 rounded-xl mb-8">
+              <p className="opacity-90 mb-4 font-medium">Original text:</p>
+              <p className="mb-8 font-medium">{exercise?.original}</p>
               
               <div className="mb-6">
-                <p className="text-gray-700 mb-2 font-medium">Your spoken translation:</p>
-                <p className="text-gray-900 min-h-16 p-4 border border-gray-300 rounded-lg bg-gray-50">
+                <p className="opacity-90 mb-2 font-medium">Your spoken translation:</p>
+                <p className="min-h-16 p-4 bg-white/10 border border-white/20 rounded-lg">
                   {transcript || "Start speaking..."}
                 </p>
               </div>
               
               {!browserSupportsSpeechRecognition && (
-                <p className="text-red-600 mb-4 font-medium">
-                  Your browser doesn't support speech recognition.
+                <p className="text-red-300 mb-4 font-medium">
+                  ⚠️ Your browser doesn't support speech recognition.
                   Please try a different browser like Chrome.
                 </p>
               )}
@@ -304,33 +306,33 @@ function PracticePageInner() {
                   <button
                     onClick={startListening}
                     disabled={!browserSupportsSpeechRecognition}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:bg-green-300"
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105 disabled:bg-green-800/30"
                   >
-                    Start Speaking
+                    🎤 Start Speaking
                   </button>
                 ) : (
                   <button
                     onClick={handleStopListening}
-                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105"
                   >
-                    Stop Speaking
+                    ⏹️ Stop Speaking
                   </button>
                 )}
                 
                 <button
                   onClick={resetTranscript}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105"
                 >
-                  Reset
+                  🔄 Reset
                 </button>
               </div>
               
               <div className="mt-6">
                 <button
                   onClick={() => setStep(PracticeStep.WriteTranslation)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="shine-button text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105"
                 >
-                  Continue to Writing
+                  Continue to Writing ✏️
                 </button>
               </div>
             </div>
@@ -340,18 +342,18 @@ function PracticePageInner() {
       case PracticeStep.WriteTranslation:
         return (
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-6">Write your translation</h2>
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-300">
-              <p className="text-gray-700 mb-4 font-medium">Original text:</p>
-              <p className="text-gray-900 mb-8 font-medium">{exercise?.original}</p>
+            <h2 className="text-2xl font-bold gradient-text mb-6">Write your translation ✏️</h2>
+            <div className="glass-card p-6 rounded-xl mb-8">
+              <p className="opacity-90 mb-4 font-medium">Original text:</p>
+              <p className="mb-8 font-medium">{exercise?.original}</p>
               
               <div className="mb-6">
-                <p className="text-gray-700 mb-2 font-medium">Now write your translation:</p>
-                <p className="text-sm text-gray-500 mb-3">Focus on spelling the words correctly. Don't worry about capitalization or punctuation.</p>
+                <p className="opacity-90 mb-2 font-medium">Now write your translation:</p>
+                <p className="text-sm opacity-70 mb-3">Focus on spelling the words correctly. Don't worry about capitalization or punctuation.</p>
                 <textarea
                   value={writtenTranslation}
                   onChange={(e) => setWrittenTranslation(e.target.value)}
-                  className="w-full p-4 border border-gray-300 rounded-lg text-lg min-h-32 text-gray-900"
+                  className="w-full p-4 bg-white/10 border border-white/20 rounded-lg text-lg min-h-32 text-white placeholder-white/50"
                   placeholder="Type your translation here..."
                 />
               </div>
@@ -359,9 +361,9 @@ function PracticePageInner() {
               <button
                 onClick={submitWrittenTranslation}
                 disabled={isSubmitting || !writtenTranslation.trim()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200 disabled:bg-indigo-300"
+                className="shine-button text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 hover:scale-105 disabled:opacity-50"
               >
-                {isSubmitting ? 'Checking...' : 'Check Spelling'}
+                {isSubmitting ? '🔍 Checking...' : '🔍 Check Spelling'}
               </button>
             </div>
           </div>
@@ -370,12 +372,12 @@ function PracticePageInner() {
       case PracticeStep.ShowResults:
         return (
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-6">Spelling Results</h2>
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 className="text-2xl font-bold gradient-text mb-6">Spelling Results 📊</h2>
+            <div className="glass-card p-6 rounded-xl mb-8">
               <div className="mb-6">
-                <p className="text-gray-700 mb-2 font-medium">Your spelling score:</p>
+                <p className="opacity-90 mb-2 font-medium">Your spelling score:</p>
                 <div className="flex justify-center items-center mb-4">
-                  <div className="text-4xl font-bold text-indigo-600">
+                  <div className="text-4xl font-bold gradient-text">
                     {spellingResult?.overallScore}/10
                   </div>
                 </div>
@@ -387,35 +389,35 @@ function PracticePageInner() {
               
               {spellingResult?.misspelledWords && spellingResult.misspelledWords.length > 0 ? (
                 <div>
-                  <h3 className="text-xl font-semibold mb-4">Words to practice:</h3>
+                  <h3 className="text-xl font-semibold gradient-text mb-4">Words to practice:</h3>
                   <ul className="mb-6">
                     {spellingResult.misspelledWords.map((word, index) => (
-                      <li key={index} className="mb-4 p-4 bg-red-50 rounded-lg border border-red-100">
+                      <li key={index} className="mb-4 p-4 glass-card bg-red-500/10 rounded-lg border border-red-500/20">
                         <p className="font-semibold">
-                          <span className="line-through text-red-600">{word.misspelled}</span>
+                          <span className="line-through text-red-300">{word.misspelled}</span>
                           {' → '}
-                          <span className="text-green-600">{word.correct}</span>
+                          <span className="text-green-300">{word.correct}</span>
                         </p>
-                        <p className="text-gray-800 mt-1">{word.tip}</p>
+                        <p className="opacity-90 mt-1">{word.tip}</p>
                       </li>
                     ))}
                   </ul>
                   
                   <button
                     onClick={startPracticingWords}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
+                    className="shine-button text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 hover:scale-105"
                   >
-                    Practice These Words
+                    Practice These Words 🏋️‍♀️
                   </button>
                 </div>
               ) : (
                 <div>
-                  <p className="text-lg mb-6 font-medium">Great job! No spelling errors found.</p>
+                  <p className="text-lg mb-6 font-medium">Great job! No spelling errors found. 🎉</p>
                   <Link
                     href="/progress"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
+                    className="shine-button text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 hover:scale-105"
                   >
-                    View Progress
+                    View Progress 📈
                   </Link>
                 </div>
               )}
@@ -433,65 +435,65 @@ function PracticePageInner() {
         
         return (
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-6">
-              Practice Word {currentWordIndex + 1} of {spellingResult.misspelledWords.length}
+            <h2 className="text-2xl font-bold gradient-text mb-6">
+              Practice Word {currentWordIndex + 1} of {spellingResult.misspelledWords.length} 🔤
             </h2>
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-300">
+            <div className="glass-card p-6 rounded-xl mb-8">
               <div className="mb-6">
-                <p className="text-gray-700 mb-2 font-medium">Remember this tip:</p>
-                <p className="text-gray-900 mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p className="opacity-90 mb-2 font-medium">Remember this tip:</p>
+                <p className="mb-6 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                   {currentWord.tip}
                 </p>
                 
-                <p className="text-gray-700 mb-2 font-medium">You spelled it as:</p>
-                <p className="text-lg mb-6 line-through text-red-600 font-medium">
+                <p className="opacity-90 mb-2 font-medium">You spelled it as:</p>
+                <p className="text-lg mb-6 line-through text-red-300 font-medium">
                   {currentWord.misspelled}
                 </p>
                 
                 {showAnswer ? (
                   <div className="mb-6">
-                    <p className="text-gray-700 mb-2 font-medium">The correct spelling is:</p>
-                    <p className="text-2xl mb-6 text-green-600 font-bold">
+                    <p className="opacity-90 mb-2 font-medium">The correct spelling is:</p>
+                    <p className="text-2xl mb-6 text-green-300 font-bold">
                       {currentWord.correct}
                     </p>
                     <button
                       onClick={moveToNextWord}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
+                      className="shine-button text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 hover:scale-105"
                     >
-                      {currentWordIndex < spellingResult.misspelledWords.length - 1 ? 'Next Word' : 'Finish Practice'}
+                      {currentWordIndex < spellingResult.misspelledWords.length - 1 ? 'Next Word ➡️' : 'Finish Practice 🎉'}
                     </button>
                   </div>
                 ) : (
                   <>
-                    <p className="text-gray-700 mb-2 font-medium">Now try to spell it correctly:</p>
-                    <p className="text-sm text-gray-500 mb-2">Attempt {currentWordAttempts + 1} of 5</p>
+                    <p className="opacity-90 mb-2 font-medium">Now try to spell it correctly:</p>
+                    <p className="text-sm opacity-70 mb-2">Attempt {currentWordAttempts + 1} of 5</p>
                     <input
                       type="text"
                       value={currentWordAttempt}
                       onChange={(e) => setCurrentWordAttempt(e.target.value)}
-                      className="w-full p-4 border border-gray-300 rounded-lg text-lg text-center text-gray-900"
+                      className="w-full p-4 bg-white/10 border border-white/20 rounded-lg text-lg text-center text-white placeholder-white/50"
                       placeholder="Type the correct spelling..."
                     />
                     
                     {error && (
-                      <p className="text-red-600 mt-4 mb-2 font-medium">{error}</p>
+                      <p className="text-red-300 mt-4 mb-2 font-medium">{error}</p>
                     )}
                     
                     <div className="mt-4 flex justify-center gap-4">
                       <button
                         onClick={checkWordAttempt}
                         disabled={!currentWordAttempt.trim()}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200 disabled:bg-indigo-300"
+                        className="shine-button text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 hover:scale-105 disabled:opacity-50"
                       >
-                        Check
+                        Check ✓
                       </button>
                       
                       {currentWordAttempts >= 2 && (
                         <button
                           onClick={() => setCurrentWordAttempts(5)} // Force show answer
-                          className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
+                          className="bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 hover:scale-105"
                         >
-                          Show Answer
+                          Show Answer 👁️
                         </button>
                       )}
                     </div>
@@ -509,20 +511,24 @@ function PracticePageInner() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6 border border-gray-300">
+      {/* Decorative elements */}
+      <div className="absolute top-40 left-20 w-64 h-64 bg-cyan-500/20 rounded-full filter blur-3xl animate-pulse-slow"></div>
+      <div className="absolute bottom-20 right-20 w-80 h-80 bg-indigo-500/20 rounded-full filter blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
+      
+      <div className="max-w-3xl mx-auto glass-card rounded-xl p-6 relative z-10">
         <div className="flex justify-between items-center mb-8">
-          <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-semibold">
+          <Link href="/" className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
             ← Back to Home
           </Link>
           
-          <h1 className="text-3xl font-bold text-indigo-700">
-            SpellBuddy Practice
+          <h1 className="text-3xl font-bold gradient-text">
+            SpellBuddy Practice 🧙‍♂️
           </h1>
         </div>
         
         {error && step !== PracticeStep.PracticeWords && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 font-medium">
-            {error}
+          <div className="bg-red-500/20 text-red-300 p-4 rounded-xl mb-6 border border-red-500/20">
+            ⚠️ {error}
           </div>
         )}
         
@@ -548,7 +554,8 @@ export default function PracticePage() {
     return (
       <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
         <div className="text-center">
-          <p className="text-xl text-gray-700">Loading...</p>
+          <div className="animate-spin h-10 w-10 border-4 border-cyan-400 rounded-full border-t-transparent mx-auto mb-4"></div>
+          <p className="text-xl font-medium">Loading...</p>
         </div>
       </div>
     );
