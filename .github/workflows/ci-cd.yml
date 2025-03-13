@@ -11,6 +11,9 @@ env:
   DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
   DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
   IMAGE_NAME: spellbuddy
+  # Add placeholder API key for build
+  OPENAI_API_KEY: sk-placeholder-key-for-build-process
+  OPENAI_MODEL: gpt-4o-mini
 
 jobs:
   build:
@@ -33,14 +36,28 @@ jobs:
       # - name: Lint
       #   run: npm run lint
       
+      - name: Create .env.local file
+        run: |
+          echo "OPENAI_API_KEY=sk-placeholder-key-for-build-process" > .env.local
+          echo "OPENAI_MODEL=gpt-4o-mini" >> .env.local
+          echo "DATABASE_URL=file:./spellbuddy.db" >> .env.local
+          echo "JWT_SECRET=placeholder-jwt-secret-for-build" >> .env.local
+      
       - name: Build
         run: npm run build
+        env:
+          OPENAI_API_KEY: sk-placeholder-key-for-build-process
+          OPENAI_MODEL: gpt-4o-mini
+      
+      - name: List build output
+        run: ls -la .next/
       
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
           path: .next/
+          retention-days: 1
   
   docker:
     needs: build
@@ -51,11 +68,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Create .next directory
+        run: mkdir -p .next
+      
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
           path: .next/
+      
+      - name: List downloaded artifacts
+        run: ls -la .next/
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

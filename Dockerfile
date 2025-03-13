@@ -10,8 +10,8 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Note: We're not building the application here because
+# the .next directory is already built and copied from the CI/CD pipeline
 
 # Production stage
 FROM node:18-alpine AS runner
