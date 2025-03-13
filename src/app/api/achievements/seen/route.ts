@@ -21,10 +21,10 @@ export async function POST(request: NextRequest) {
     await gamification.markAchievementsSeen(user.id, achievementIds);
     
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error marking achievements as seen:', error);
     
-    if (error.message === 'Authentication required') {
+    if (error instanceof Error && error.message === 'Authentication required') {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }

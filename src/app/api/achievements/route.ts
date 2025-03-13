@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { achievements, userAchievements } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get the current user (will throw if not authenticated)
     const user = await requireAuth();
@@ -57,10 +57,10 @@ export async function GET(request: NextRequest) {
     });
     
     return NextResponse.json({ achievements: achievementsWithStatus });
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting achievements:', error);
     
-    if (error.message === 'Authentication required') {
+    if (error instanceof Error && error.message === 'Authentication required') {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }

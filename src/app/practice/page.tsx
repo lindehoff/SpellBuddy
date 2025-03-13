@@ -39,7 +39,6 @@ function PracticePageInner() {
   const [step, setStep] = useState<PracticeStep>(PracticeStep.Loading);
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [writtenTranslation, setWrittenTranslation] = useState('');
-  const [spokenTranslation, setSpokenTranslation] = useState('');
   const [spellingResult, setSpellingResult] = useState<SpellingResult | null>(null);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentWordAttempt, setCurrentWordAttempt] = useState('');
@@ -99,9 +98,7 @@ function PracticePageInner() {
 
   // Update spoken translation when transcript changes
   useEffect(() => {
-    if (step === PracticeStep.SpeakTranslation) {
-      setSpokenTranslation(transcript);
-    }
+    // We're just using transcript directly now, no need for a separate state
   }, [transcript, step]);
 
   // Stop speech recognition and save the spoken translation
@@ -205,7 +202,7 @@ function PracticePageInner() {
       }
     } else {
       // Word is incorrect, show error but let them try again
-      setError(`That's not quite right. Try again!`);
+      setError(`That&apos;s not quite right. Try again!`);
       setTimeout(() => setError(''), 2000);
     }
   };
@@ -274,7 +271,7 @@ function PracticePageInner() {
               onClick={() => setStep(PracticeStep.SpeakTranslation)}
               className="shine-button text-white font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-lg text-base sm:text-lg transition-all duration-300 hover:scale-105 w-full sm:w-auto"
             >
-              I'm ready to translate 🎙️
+              I&apos;m ready to translate 🎙️
             </button>
           </div>
         );
@@ -296,7 +293,7 @@ function PracticePageInner() {
               
               {!browserSupportsSpeechRecognition && (
                 <p className="text-red-300 mb-4 font-medium">
-                  ⚠️ Your browser doesn't support speech recognition.
+                  ⚠️ Your browser doesn&apos;t support speech recognition.
                   Please try a different browser like Chrome.
                 </p>
               )}
@@ -349,7 +346,7 @@ function PracticePageInner() {
               
               <div className="mb-5 sm:mb-6">
                 <p className="opacity-90 mb-2 font-medium">Now write your translation:</p>
-                <p className="text-sm opacity-70 mb-3">Focus on spelling the words correctly. Don't worry about capitalization or punctuation.</p>
+                <p className="text-sm opacity-70 mb-3">Focus on spelling the words correctly. Don&apos;t worry about capitalization or punctuation.</p>
                 <textarea
                   value={writtenTranslation}
                   onChange={(e) => setWrittenTranslation(e.target.value)}

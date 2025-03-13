@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useTheme } from '@/components/ThemeProvider';
 
 export default function Home() {
-  const { theme } = useTheme();
+  const { theme: _ } = useTheme(); // Rename to _ to indicate intentionally unused
   const [mounted, setMounted] = useState(false);
   
   // Ensure theme is available after hydration

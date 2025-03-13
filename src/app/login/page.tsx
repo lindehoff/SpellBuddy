@@ -21,8 +21,8 @@ export default function LoginPage() {
     try {
       await login(usernameOrEmail, password);
       router.push('/');
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+    } catch (err: Error | unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +87,7 @@ export default function LoginPage() {
         
         <div className="mt-4 sm:mt-6 text-center">
           <p className="opacity-90 text-sm sm:text-base">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors">
               Register
             </Link>
