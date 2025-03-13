@@ -16,6 +16,7 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "SpellBuddy - English Spelling Practice",
   description: "A fun and encouraging way to practice English spelling for students with dyslexia",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
 };
 
 export default function RootLayout({
