@@ -1,0 +1,42 @@
+{
+  "name": "spellbuddy",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/lib/db/migrate.ts"
+  },
+  "dependencies": {
+    "ai": "^4.1.58",
+    "better-sqlite3": "^11.8.1",
+    "drizzle-orm": "^0.40.0",
+    "langchain": "^0.3.19",
+    "next": "15.2.2",
+    "openai": "^4.87.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-speech-recognition": "^3.10.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "autoprefixer": "^10.4.16",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/react-speech-recognition": "^3.9.6",
+    "@types/uuid": "^10.0.0",
+    "drizzle-kit": "^0.30.5",
+    "eslint": "^9",
+    "eslint-config-next": "15.2.2",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5"
+  }
+}
