@@ -25,12 +25,13 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50`}>
         <AuthProvider>
           <NavBar />
-          <main className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
+          <main className="pt-16 min-h-screen">
             {children}
           </main>
+          <div className="fixed bottom-0 left-0 w-full h-24 bg-gradient-to-t from-indigo-100/50 to-transparent pointer-events-none"></div>
         </AuthProvider>
       </body>
     </html>

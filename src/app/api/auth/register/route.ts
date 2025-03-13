@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { registerUser, setAuthCookie } from '@/lib/auth';
+import jwt from 'jsonwebtoken';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +24,16 @@ export async function POST(request: NextRequest) {
     // Register the user
     const user = await registerUser(username, email, password);
     
-    // Generate JWT token (we'll implement this in the login route)
+    // Generate JWT token
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    // Set the authentication cookie
+    await setAuthCookie(token);
     
     return NextResponse.json({ 
       message: 'Registration successful',

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const { user, token } = await loginUser(usernameOrEmail, password);
     
     // Set the authentication cookie
-    setAuthCookie(token);
+    await setAuthCookie(token);
     
     return NextResponse.json({ 
       message: 'Login successful',

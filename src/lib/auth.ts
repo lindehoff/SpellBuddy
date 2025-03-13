@@ -128,7 +128,7 @@ export async function verifyToken(token: string): Promise<UserData | null> {
 
 // Get current user from cookies
 export async function getCurrentUser(): Promise<UserData | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
   
   if (!token) {
@@ -139,8 +139,8 @@ export async function getCurrentUser(): Promise<UserData | null> {
 }
 
 // Set authentication cookie
-export function setAuthCookie(token: string): void {
-  const cookieStore = cookies();
+export async function setAuthCookie(token: string): Promise<void> {
+  const cookieStore = await cookies();
   
   // Set the cookie with HttpOnly flag
   cookieStore.set('auth_token', token, {
@@ -153,8 +153,8 @@ export function setAuthCookie(token: string): void {
 }
 
 // Clear authentication cookie
-export function clearAuthCookie(): void {
-  const cookieStore = cookies();
+export async function clearAuthCookie(): Promise<void> {
+  const cookieStore = await cookies();
   cookieStore.delete('auth_token');
 }
 

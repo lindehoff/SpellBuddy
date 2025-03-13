@@ -11,7 +11,8 @@ export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export const DEFAULT_MODEL = 'gpt-4o-mini';
+// Get the model from environment variables or use a default
+export const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 /**
  * Get an evaluation of spelling from the OpenAI API
