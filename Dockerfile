@@ -80,4 +80,4 @@ VOLUME ["/app/data"]
 EXPOSE 3000
 
 # Start the application with our custom script
-CMD ["/app/start.sh"] 
+CMD ["/bin/sh", "/app/start.sh"] 
