@@ -1,5 +1,6 @@
 import * as repository from './repository';
 import * as ai from './openai';
+import * as gamification from './gamification';
 import { UserData } from './auth';
 
 // Types
@@ -19,6 +20,7 @@ export type Exercise = {
   original: string;
   translation?: string;
   userTranslation?: string;
+  difficulty?: number;
 };
 
 export type Progress = {
@@ -27,6 +29,11 @@ export type Progress = {
   challenges: string;
   tips: string[];
   encouragement: string;
+  level?: number;
+  experiencePoints?: number;
+  nextLevelPoints?: number;
+  achievements?: Achievement[];
+  streak?: number;
 };
 
 export type UserPreferences = {
@@ -34,6 +41,19 @@ export type UserPreferences = {
   interests?: string;
   difficultyLevel?: string;
   topicsOfInterest?: string;
+  adaptiveDifficulty?: number;
+  currentDifficultyScore?: number;
+};
+
+export type Achievement = {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  isNew: boolean;
+  unlockedAt: number;
+  achievementType: string;
+  requiredValue: number;
 };
 
 // Service functions
@@ -45,11 +65,40 @@ export async function createNewExercise(userId: number): Promise<Exercise> {
   // Get user preferences
   const preferences = await repository.getUserPreferences(userId);
   
+  // Get user level and calculate appropriate difficulty
+  const user = await repository.getUserById(userId);
+  const userLevel = user?.level || 1;
+  
+  // Calculate difficulty based on user level and preferences
+  let difficulty = 1;
+  if (preferences.adaptiveDifficulty === 1) {
+    // Use adaptive difficulty
+    difficulty = preferences.currentDifficultyScore || 1;
+  } else {
+    // Use static difficulty based on preference
+    switch (preferences.difficultyLevel) {
+      case 'beginner':
+        difficulty = Math.max(1, Math.min(25, userLevel));
+        break;
+      case 'intermediate':
+        difficulty = Math.max(25, Math.min(50, userLevel * 1.5));
+        break;
+      case 'advanced':
+        difficulty = Math.max(50, Math.min(75, userLevel * 2));
+        break;
+      case 'expert':
+        difficulty = Math.max(75, Math.min(100, userLevel * 3));
+        break;
+      default:
+        difficulty = Math.max(1, Math.min(100, userLevel));
+    }
+  }
+  
   // Generate exercise with OpenAI
-  const exercise = await ai.generateExercise(wordList, preferences);
+  const exercise = await ai.generateExercise(wordList, preferences, difficulty);
   
   // Save to database
-  const id = await repository.createExercise(userId, exercise.original);
+  const id = await repository.createExercise(userId, exercise.original, difficulty);
   if (id) {
     await repository.updateExerciseTranslation(id, exercise.translation, '');
   }
@@ -58,6 +107,7 @@ export async function createNewExercise(userId: number): Promise<Exercise> {
     id: id || 0,
     original: exercise.original,
     translation: exercise.translation,
+    difficulty: difficulty,
   };
 }
 
@@ -110,14 +160,43 @@ export async function submitWrittenTranslation(
     );
   }
   
+  // Calculate experience points based on performance and difficulty
+  const exerciseDifficulty = exercise.exerciseDifficulty || 1;
+  const wordCount = writtenText.split(' ').length;
+  const misspelledCount = evaluation.misspelledWords?.length || 0;
+  const correctCount = wordCount - misspelledCount;
+  const isPerfect = misspelledCount === 0 && wordCount > 0;
+  
+  // Base XP formula: (correct words * difficulty multiplier) + perfect bonus
+  const difficultyMultiplier = Math.max(1, Math.sqrt(exerciseDifficulty) / 5);
+  const baseXP = Math.round(correctCount * difficultyMultiplier);
+  const perfectBonus = isPerfect ? Math.round(10 * difficultyMultiplier) : 0;
+  const totalXP = baseXP + perfectBonus;
+  
+  // Update exercise with awarded XP
+  await repository.updateExerciseExperience(exerciseId, totalXP);
+  
+  // Update user's experience points and check for level up
+  const levelUpResult = await gamification.addExperiencePoints(exercise.userId, totalXP);
+  
   // Update progress
   const progress = await repository.getProgressForUser(exercise.userId);
   await repository.updateProgress(
     exercise.userId,
     progress.totalExercises + 1,
-    progress.correctWords + (writtenText.split(' ').length - (evaluation.misspelledWords?.length || 0)),
-    progress.incorrectWords + (evaluation.misspelledWords?.length || 0)
+    progress.correctWords + correctCount,
+    progress.incorrectWords + misspelledCount,
+    isPerfect ? progress.perfectExercises + 1 : progress.perfectExercises,
+    progress.totalExperiencePoints + totalXP
   );
+  
+  // Update difficulty score based on performance
+  if (exercise.userId) {
+    await updateDifficultyScore(exercise.userId, evaluation.overallScore, isPerfect);
+  }
+  
+  // Check for new achievements
+  await gamification.checkAchievements(exercise.userId);
   
   return evaluation;
 }
@@ -141,6 +220,9 @@ export async function markWordAsLearned(
     true,
     1
   );
+  
+  // Award a small amount of XP for practicing a word
+  await gamification.addExperiencePoints(exercise.userId, 1);
 }
 
 export async function getProgressReport(userId: number): Promise<Progress> {
@@ -154,12 +236,72 @@ export async function getProgressReport(userId: number): Promise<Progress> {
   // Get user preferences
   const preferences = await repository.getUserPreferences(userId);
   
+  // Get user level and XP
+  const user = await repository.getUserById(userId);
+  const level = user?.level || 1;
+  const xp = user?.experiencePoints || 0;
+  const nextLevelXP = gamification.getExperienceForNextLevel(level);
+  
+  // Get recent achievements
+  const achievements = await repository.getRecentAchievements(userId, 5);
+  
   // Generate report with OpenAI
-  return ai.getProgressReport(
+  const aiReport = await ai.getProgressReport(
     progress.totalExercises,
     progress.correctWords,
     progress.incorrectWords,
     wordList,
     preferences
   );
+  
+  return {
+    ...aiReport,
+    level,
+    experiencePoints: xp,
+    nextLevelPoints: nextLevelXP,
+    achievements: achievements.map(a => ({
+      id: a.id,
+      name: a.name,
+      description: a.description,
+      icon: a.icon,
+      isNew: a.isNew === 1,
+      unlockedAt: a.unlockedAt,
+    })),
+    streak: progress.streakDays,
+  };
+}
+
+// Helper function to update difficulty score based on performance
+async function updateDifficultyScore(
+  userId: number, 
+  overallScore: number, 
+  isPerfect: boolean
+): Promise<void> {
+  // Get current preferences
+  const preferences = await repository.getUserPreferences(userId);
+  
+  // Only update if adaptive difficulty is enabled
+  if (preferences.adaptiveDifficulty !== 1) {
+    return;
+  }
+  
+  let currentScore = preferences.currentDifficultyScore || 1;
+  
+  // Adjust difficulty based on performance
+  if (isPerfect && overallScore >= 9) {
+    // Increase difficulty if perfect or near-perfect
+    currentScore = Math.min(100, currentScore + 5);
+  } else if (overallScore >= 7) {
+    // Slight increase for good performance
+    currentScore = Math.min(100, currentScore + 2);
+  } else if (overallScore <= 3) {
+    // Significant decrease for poor performance
+    currentScore = Math.max(1, currentScore - 5);
+  } else if (overallScore <= 5) {
+    // Slight decrease for below-average performance
+    currentScore = Math.max(1, currentScore - 2);
+  }
+  
+  // Update the difficulty score
+  await repository.updateUserDifficultyScore(userId, currentScore);
 } 

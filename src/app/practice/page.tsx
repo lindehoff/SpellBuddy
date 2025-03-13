@@ -45,6 +45,7 @@ function PracticePageInner() {
   const [currentWordAttempt, setCurrentWordAttempt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isLoadingExercise, setIsLoadingExercise] = useState(true);
   
   // Use our custom speech recognition hook
   const {
@@ -60,6 +61,9 @@ function PracticePageInner() {
   useEffect(() => {
     async function loadExercise() {
       try {
+        setIsLoadingExercise(true);
+        setExercise(null); // Clear previous exercise while loading
+        
         const response = await fetch('/api/exercises', {
           method: 'POST',
         });
@@ -80,6 +84,8 @@ function PracticePageInner() {
       } catch (err) {
         setError('Failed to load exercise. Please try again.');
         console.error(err);
+      } finally {
+        setIsLoadingExercise(false);
       }
     }
     
@@ -198,6 +204,17 @@ function PracticePageInner() {
 
   // Render different content based on the current step
   const renderStepContent = () => {
+    // Show loading spinner when loading an exercise
+    if (isLoadingExercise) {
+      return (
+        <div className="flex flex-col items-center justify-center">
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6"></div>
+          <p className="text-xl font-medium text-indigo-700">Creating your exercise...</p>
+          <p className="text-gray-600 mt-2">This may take a moment as we personalize it for you.</p>
+        </div>
+      );
+    }
+    
     switch (step) {
       case PracticeStep.Loading:
         return (

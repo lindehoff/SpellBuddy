@@ -1,9 +1,31 @@
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { db } from "./index";
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { db } from './index';
+import { addGamificationTables } from './migrations/add-gamification';
+import { seedAchievements } from './seed/achievements';
 
-console.log("Running migrations...");
+async function runMigrations() {
+  console.log('Running migrations...');
+  
+  try {
+    // Run schema migrations
+    await migrate(db, { migrationsFolder: './drizzle' });
+    
+    // Run custom migrations
+    await addGamificationTables();
+    
+    // Seed data
+    await seedAchievements();
+    
+    console.log('All migrations completed successfully.');
+  } catch (error) {
+    console.error('Migration failed:', error);
+    process.exit(1);
+  }
+}
 
-// This will run all the migrations
-migrate(db, { migrationsFolder: "./drizzle" });
+// Run migrations if this file is executed directly
+if (require.main === module) {
+  runMigrations();
+}
 
-console.log("Migrations complete!"); 
+export { runMigrations }; 

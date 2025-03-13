@@ -64,11 +64,13 @@ export async function evaluateSpelling(
  * Generate a new practice exercise based on user's history and preferences
  * @param difficultWords Array of words the user has struggled with
  * @param preferences User preferences for personalization
+ * @param difficulty Difficulty level (1-100 scale)
  * @returns Object with original text in Swedish and its English translation
  */
 export async function generateExercise(
   difficultWords: string[] = [],
-  preferences?: UserPreferences
+  preferences?: UserPreferences,
+  difficulty: number = 1
 ) {
   const wordContext = difficultWords.length > 0 
     ? `Include some of these words the student has struggled with: ${difficultWords.join(', ')}.` 
@@ -88,10 +90,20 @@ export async function generateExercise(
     if (preferences.topicsOfInterest) {
       personalizationContext += `Topics the student enjoys: ${preferences.topicsOfInterest}. `;
     }
-    
-    if (preferences.difficultyLevel) {
-      personalizationContext += `Preferred difficulty level: ${preferences.difficultyLevel}. `;
-    }
+  }
+  
+  // Map the 1-100 difficulty scale to a more descriptive range for the AI
+  let difficultyDescription = '';
+  if (difficulty <= 20) {
+    difficultyDescription = 'very easy, with simple words and basic sentence structure';
+  } else if (difficulty <= 40) {
+    difficultyDescription = 'easy, with common words and straightforward sentences';
+  } else if (difficulty <= 60) {
+    difficultyDescription = 'moderate, with a mix of common and less common words';
+  } else if (difficulty <= 80) {
+    difficultyDescription = 'challenging, with some complex words and sentence structures';
+  } else {
+    difficultyDescription = 'very challenging, with advanced vocabulary and complex sentences';
   }
 
   const response = await openai.chat.completions.create({
@@ -105,6 +117,8 @@ export async function generateExercise(
         Create text appropriate for a student who knows English well but struggles with spelling.
         Make the content engaging, relatable and age-appropriate for the student.
         ${personalizationContext}
+        
+        The difficulty level should be ${difficultyDescription}.
         ${wordContext}
         
         Respond in JSON format with:
@@ -147,7 +161,25 @@ export async function getProgressReport(
       personalizationContext += `The student is interested in: ${preferences.interests}. `;
     }
     
-    if (preferences.difficultyLevel) {
+    // Use the adaptive difficulty score if available
+    if (preferences.adaptiveDifficulty === 1 && preferences.currentDifficultyScore) {
+      const difficultyScore = preferences.currentDifficultyScore;
+      let difficultyDescription = '';
+      
+      if (difficultyScore <= 20) {
+        difficultyDescription = 'beginner';
+      } else if (difficultyScore <= 40) {
+        difficultyDescription = 'elementary';
+      } else if (difficultyScore <= 60) {
+        difficultyDescription = 'intermediate';
+      } else if (difficultyScore <= 80) {
+        difficultyDescription = 'advanced';
+      } else {
+        difficultyDescription = 'expert';
+      }
+      
+      personalizationContext += `Current difficulty level: ${difficultyDescription} (${difficultyScore}/100). `;
+    } else if (preferences.difficultyLevel) {
       personalizationContext += `Current difficulty level: ${preferences.difficultyLevel}. `;
     }
   }

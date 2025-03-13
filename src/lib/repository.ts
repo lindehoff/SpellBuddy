@@ -1,12 +1,22 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, not, gt } from 'drizzle-orm';
 import { db, schema } from './db';
 import { UserPreferences } from './service';
 
+// User repository functions
+export async function getUserById(userId: number) {
+  const result = await db.select()
+    .from(schema.users)
+    .where(eq(schema.users.id, userId));
+  
+  return result[0];
+}
+
 // Exercise repository functions
-export async function createExercise(userId: number, originalText: string) {
+export async function createExercise(userId: number, originalText: string, difficulty: number = 1) {
   const result = await db.insert(schema.exercises).values({
     userId,
     originalText,
+    exerciseDifficulty: difficulty,
     createdAt: Math.floor(Date.now() / 1000),
   }).returning({ id: schema.exercises.id });
   
@@ -35,6 +45,15 @@ export async function updateExerciseAnswer(
       userTranslation,
       completedAt: Math.floor(Date.now() / 1000)
     })
+    .where(eq(schema.exercises.id, exerciseId));
+}
+
+export async function updateExerciseExperience(
+  exerciseId: number,
+  experienceAwarded: number
+) {
+  await db.update(schema.exercises)
+    .set({ experienceAwarded })
     .where(eq(schema.exercises.id, exerciseId));
 }
 
@@ -150,7 +169,9 @@ export async function updateProgress(
   userId: number,
   exerciseCount: number,
   correctWords: number,
-  incorrectWords: number
+  incorrectWords: number,
+  perfectExercises: number = 0,
+  totalExperiencePoints: number = 0
 ) {
   // Get existing progress
   const progress = await getProgressForUser(userId);
@@ -174,6 +195,9 @@ export async function updateProgress(
     streakDays += 1;
   }
   
+  // Update longest streak if current streak is longer
+  const longestStreak = Math.max(progress.longestStreak || 0, streakDays);
+  
   await db.update(schema.progress)
     .set({
       totalExercises: exerciseCount,
@@ -182,6 +206,9 @@ export async function updateProgress(
       streakDays,
       lastExerciseDate: Math.floor(Date.now() / 1000),
       updatedAt: Math.floor(Date.now() / 1000),
+      perfectExercises,
+      longestStreak,
+      totalExperiencePoints,
     })
     .where(eq(schema.progress.userId, userId));
 }
@@ -202,5 +229,36 @@ export async function getUserPreferences(userId: number): Promise<UserPreference
     interests: pref.interests || undefined,
     difficultyLevel: pref.difficultyLevel || undefined,
     topicsOfInterest: pref.topicsOfInterest || undefined,
+    adaptiveDifficulty: pref.adaptiveDifficulty,
+    currentDifficultyScore: pref.currentDifficultyScore,
   };
+}
+
+export async function updateUserDifficultyScore(userId: number, difficultyScore: number) {
+  await db.update(schema.userPreferences)
+    .set({
+      currentDifficultyScore: difficultyScore,
+      updatedAt: Math.floor(Date.now() / 1000),
+    })
+    .where(eq(schema.userPreferences.userId, userId));
+}
+
+// Achievement repository functions
+export async function getRecentAchievements(userId: number, limit = 5) {
+  return db.select({
+    id: schema.achievements.id,
+    name: schema.achievements.name,
+    description: schema.achievements.description,
+    icon: schema.achievements.icon,
+    unlockedAt: schema.userAchievements.unlockedAt,
+    isNew: schema.userAchievements.isNew,
+  })
+    .from(schema.achievements)
+    .innerJoin(
+      schema.userAchievements,
+      eq(schema.achievements.id, schema.userAchievements.achievementId)
+    )
+    .where(eq(schema.userAchievements.userId, userId))
+    .orderBy(desc(schema.userAchievements.unlockedAt))
+    .limit(limit);
 } 

@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/lib/db/migrate.ts"
+    "db:generate": "drizzle-kit generate:sqlite",
+    "db:migrate": "node -r @swc-node/register src/lib/db/migrate.ts",
+    "db:gamify": "node -r @swc-node/register src/lib/db/migrate.ts --gamify"
   },
   "dependencies": {
     "ai": "^4.1.58",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@swc-node/register": "^1.10.10",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.12",
     "@types/cookie": "^0.6.0",
