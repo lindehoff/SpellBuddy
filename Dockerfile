@@ -42,33 +42,9 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Create data directory with proper permissions
-RUN mkdir -p /app/data /app/drizzle && \
+RUN mkdir -p /app/data /app/drizzle /app/drizzle/migrations /app/drizzle/meta && \
     chown -R nextjs:nodejs /app && \
     chmod -R 755 /app/data
-
-# Create a startup script to handle database initialization and migrations
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo '# Ensure proper permissions for data directory' >> /app/start.sh && \
-    echo 'chmod -R 755 /app/data' >> /app/start.sh && \
-    echo 'touch /app/data/sqlite.db' >> /app/start.sh && \
-    echo 'chmod 666 /app/data/sqlite.db' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo '# Initialize database if it does not exist' >> /app/start.sh && \
-    echo 'if [ ! -s "/app/data/sqlite.db" ]; then' >> /app/start.sh && \
-    echo '  echo "Database does not exist or is empty. Initializing..."' >> /app/start.sh && \
-    echo '  npm run db:generate' >> /app/start.sh && \
-    echo '  npm run db:migrate || echo "Migration failed, but continuing startup"' >> /app/start.sh && \
-    echo 'else' >> /app/start.sh && \
-    echo '  # Check if we need to run migrations' >> /app/start.sh && \
-    echo '  echo "Checking for pending migrations..."' >> /app/start.sh && \
-    echo '  npm run db:generate' >> /app/start.sh && \
-    echo '  npm run db:migrate || echo "Migration failed, but continuing startup"' >> /app/start.sh && \
-    echo 'fi' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo '# Start the application' >> /app/start.sh && \
-    echo 'exec npm start' >> /app/start.sh && \
-    chmod +x /app/start.sh
 
 # Switch to non-root user
 USER nextjs
@@ -79,5 +55,5 @@ VOLUME ["/app/data"]
 # Expose the port the app will run on
 EXPOSE 3000
 
-# Start the application with our custom script
-CMD ["/bin/sh", "/app/start.sh"] 
+# Start the application with initialization
+CMD /bin/sh -c "chmod -R 755 /app/data && touch /app/data/sqlite.db && chmod 666 /app/data/sqlite.db && if [ ! -s \"/app/data/sqlite.db\" ]; then echo \"Database does not exist or is empty. Initializing...\" && npm run db:generate && sleep 2 && npm run db:migrate || echo \"Migration failed, but continuing startup\"; else echo \"Checking for pending migrations...\" && npm run db:migrate || echo \"Migration failed, but continuing startup\"; fi && exec npm start" 

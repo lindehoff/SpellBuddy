@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:generate": "drizzle-kit generate:sqlite",
+    "db:generate": "node -r @swc-node/register src/lib/db/schema-generator.ts && drizzle-kit generate:sqlite",
     "db:migrate": "node -r @swc-node/register src/lib/db/migrate.ts",
     "db:gamify": "node -r @swc-node/register src/lib/db/migrate.ts --gamify"
   },

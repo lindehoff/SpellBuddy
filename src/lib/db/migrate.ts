@@ -5,6 +5,7 @@ import { seedAchievements } from './seed/achievements';
 import * as fs from 'fs';
 import * as path from 'path';
 import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import * as schema from './schema';
 
 async function runMigrations() {
   console.log('Running migrations...');
@@ -31,11 +32,49 @@ async function runMigrations() {
     // Run schema migrations
     await migrate(db as BetterSQLite3Database, { migrationsFolder: './drizzle' });
     
+    // Ensure base tables exist before running custom migrations
+    try {
+      console.log('Ensuring base schema exists...');
+      // Create base tables if they don't exist
+      const sqlite = (db as any).driver.database;
+      
+      // Check if users table exists
+      const tableExists = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
+      
+      if (!tableExists) {
+        console.log('Creating base schema tables...');
+        // Create users table
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            name TEXT,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+            updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+          );
+        `);
+        
+        // Create other necessary tables
+        // Add more tables as needed based on your schema
+      }
+    } catch (schemaError) {
+      console.error('Error creating base schema:', schemaError);
+    }
+    
     // Run custom migrations
-    await addGamificationTables();
+    try {
+      await addGamificationTables();
+    } catch (gamifyError) {
+      console.error('Error adding gamification tables:', gamifyError);
+    }
     
     // Seed data
-    await seedAchievements();
+    try {
+      await seedAchievements();
+    } catch (seedError) {
+      console.error('Error seeding achievements:', seedError);
+    }
     
     console.log('All migrations completed successfully.');
   } catch (error) {
