@@ -131,7 +131,7 @@ export default function UserPreferencesForm({ onComplete }: UserPreferencesFormP
         
         <div className="mb-6">
           <label className="block font-medium mb-3">
-            Select topics you're interested in:
+            Select topics you&apos;re interested in:
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {availableTopics.map(topic => (

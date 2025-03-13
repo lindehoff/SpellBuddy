@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useTheme } from '@/components/ThemeProvider';
 
 export default function Home() {
-  const { theme: _ } = useTheme(); // Rename to _ to indicate intentionally unused
+  // We need to access theme to ensure it's available after hydration
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
   // Ensure theme is available after hydration

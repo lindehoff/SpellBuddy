@@ -72,24 +72,24 @@ export default function AchievementDisplay({
       {/* New Achievement Notification */}
       {showAchievements && newAchievements.length > 0 && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="glass-card rounded-xl max-w-md w-full p-8 animate-bounce-in my-8">
-            <h3 className="text-2xl font-bold text-center mb-6 gradient-text">
+          <div className="glass-card rounded-xl max-w-md w-full p-6 animate-bounce-in my-4 max-h-[90vh] flex flex-col">
+            <h3 className="text-2xl font-bold text-center mb-4 gradient-text">
               Achievement Unlocked!
             </h3>
             
-            <div className="flex flex-col items-center max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex flex-col items-center overflow-y-auto pr-2 custom-scrollbar flex-grow">
               {newAchievements.map((achievement) => (
-                <div key={achievement.id} className="text-center mb-6 animate-float w-full">
-                  <div className="text-6xl mb-3">{achievement.icon}</div>
-                  <h4 className="text-xl font-bold gradient-text mb-2">{achievement.name}</h4>
-                  <p className="opacity-90">{achievement.description}</p>
+                <div key={achievement.id} className="text-center mb-5 animate-float w-full">
+                  <div className="text-5xl mb-2">{achievement.icon}</div>
+                  <h4 className="text-xl font-bold gradient-text mb-1">{achievement.name}</h4>
+                  <p className="opacity-90 text-sm">{achievement.description}</p>
                 </div>
               ))}
             </div>
             
             <button
               onClick={() => setShowAchievements(false)}
-              className="mt-6 w-full shine-button text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 hover:scale-105"
+              className="mt-4 w-full shine-button text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 hover:scale-105"
             >
               Awesome!
             </button>
@@ -131,34 +131,12 @@ export default function AchievementDisplay({
 }
 
 // Add this to your global CSS or as a styled component
-const styles = `
-@keyframes bounceIn {
-  from, 20%, 40%, 60%, 80%, to {
-    animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
-  }
-  0% {
-    opacity: 0;
-    transform: scale3d(0.3, 0.3, 0.3);
-  }
-  20% {
-    transform: scale3d(1.1, 1.1, 1.1);
-  }
-  40% {
-    transform: scale3d(0.9, 0.9, 0.9);
-  }
-  60% {
-    opacity: 1;
-    transform: scale3d(1.03, 1.03, 1.03);
-  }
-  80% {
-    transform: scale3d(0.97, 0.97, 0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale3d(1, 1, 1);
-  }
-}
-.animate-bounce-in {
-  animation: bounceIn 0.75s;
-}
-`; 
+// const styles = `
+// @keyframes bounceIn {
+//   from, 20%, 40%, 60%, 80%, to {
+//     animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+//   }
+//   0% {
+//     opacity: 0;
+// ...
+// `; 

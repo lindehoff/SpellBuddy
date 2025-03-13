@@ -91,7 +91,7 @@ export default function ProgressPage() {
       <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center">
         <div className="animate-spin h-16 w-16 border-4 border-cyan-400 rounded-full border-t-transparent mb-6"></div>
         <p className="text-xl font-medium gradient-text">Analyzing your progress...</p>
-        <p className="opacity-80 mt-2">We're creating your personalized progress report.</p>
+        <p className="opacity-80 mt-2">We&apos;re creating your personalized progress report.</p>
       </div>
     );
   }
@@ -118,7 +118,7 @@ export default function ProgressPage() {
         <div className="glass-card p-8 rounded-xl text-center max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold gradient-text mb-6">No Progress Yet</h2>
           <p className="mb-8 text-lg opacity-90">
-            You haven't completed any exercises yet. Start practicing to see your progress!
+            You haven&apos;t completed any exercises yet. Start practicing to see your progress!
           </p>
           <button
             onClick={() => router.push('/practice')}
