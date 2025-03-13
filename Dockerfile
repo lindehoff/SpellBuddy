@@ -38,8 +38,13 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/drizzle.config.ts ./
 COPY --from=builder /app/.env.local.example ./
 
-# Create data directory for database and env files
-RUN mkdir -p /app/data
+# Create a non-root user and switch to it
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Create data directory and set proper permissions
+RUN mkdir -p /app/data && \
+    chown -R nextjs:nodejs /app
 
 # Create a startup script to handle database initialization and migrations
 RUN echo '#!/bin/sh \n\
@@ -53,11 +58,6 @@ fi \n\
 # Start the application \n\
 exec npm start \n\
 ' > /app/start.sh && chmod +x /app/start.sh
-
-# Create a non-root user and switch to it
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    chown -R nextjs:nodejs /app
 
 USER nextjs
 

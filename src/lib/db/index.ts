@@ -9,17 +9,22 @@ const dbPath = process.env.NODE_ENV === 'production'
   ? '/app/data/sqlite.db'
   : 'sqlite.db';
 
-// Ensure the directory exists in production
-if (process.env.NODE_ENV === 'production') {
-  const dbDir = path.dirname(dbPath);
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+// Initialize SQLite database
+let db;
+try {
+  const sqlite = new Database(dbPath);
+  db = drizzle(sqlite, { schema });
+} catch (error) {
+  console.error(`Error initializing database at ${dbPath}:`, error);
+  // Fallback to in-memory database if we can't access the file
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('Falling back to in-memory database. Data will not be persisted!');
+    const sqlite = new Database(':memory:');
+    db = drizzle(sqlite, { schema });
+  } else {
+    throw error; // Re-throw in development
   }
 }
 
-// Initialize SQLite database
-const sqlite = new Database(dbPath);
-export const db = drizzle(sqlite, { schema });
-
-// Export schema for use in other files
-export { schema }; 
+// Export database and schema
+export { db, schema }; 
