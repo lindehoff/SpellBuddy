@@ -1,6 +1,0 @@
-🔒 fix(docker): resolve permission issues with database directory
-
-- Reorder user creation and directory setup in Dockerfile
-- Add proper ownership for the data directory
-- Implement graceful fallback for database initialization errors
-- Handle permission issues during build and runtime 
