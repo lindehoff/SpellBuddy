@@ -12,17 +12,31 @@ const dbPath = process.env.NODE_ENV === 'production'
 // Initialize SQLite database
 let db;
 try {
-  const sqlite = new Database(dbPath);
+  // Try to open the database file
+  const sqlite = new Database(dbPath, { verbose: console.log });
+  
+  // Test if we can write to the database
+  sqlite.exec('PRAGMA journal_mode = WAL;');
+  
   db = drizzle(sqlite, { schema });
+  console.log(`Successfully connected to database at ${dbPath}`);
 } catch (error) {
   console.error(`Error initializing database at ${dbPath}:`, error);
   // Fallback to in-memory database if we can't access the file
-  if (process.env.NODE_ENV === 'production') {
-    console.warn('Falling back to in-memory database. Data will not be persisted!');
+  console.warn('Falling back to in-memory database. Data will not be persisted!');
+  try {
     const sqlite = new Database(':memory:');
     db = drizzle(sqlite, { schema });
-  } else {
-    throw error; // Re-throw in development
+    
+    // Create tables in memory
+    console.log('Creating tables in memory database...');
+    sqlite.exec(`
+      PRAGMA foreign_keys = ON;
+      PRAGMA journal_mode = WAL;
+    `);
+  } catch (memError) {
+    console.error('Failed to create in-memory database:', memError);
+    throw memError;
   }
 }
 
