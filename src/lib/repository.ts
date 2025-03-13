@@ -1,9 +1,11 @@
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { db, schema } from './db';
+import { UserPreferences } from './service';
 
 // Exercise repository functions
-export async function createExercise(originalText: string) {
+export async function createExercise(userId: number, originalText: string) {
   const result = await db.insert(schema.exercises).values({
+    userId,
     originalText,
     createdAt: Math.floor(Date.now() / 1000),
   }).returning({ id: schema.exercises.id });
@@ -44,9 +46,10 @@ export async function getExercise(exerciseId: number) {
   return result[0];
 }
 
-export async function getLatestExercises(limit = 5) {
+export async function getLatestExercisesForUser(userId: number, limit = 5) {
   return db.select()
     .from(schema.exercises)
+    .where(eq(schema.exercises.userId, userId))
     .orderBy(desc(schema.exercises.createdAt))
     .limit(limit);
 }
@@ -72,6 +75,7 @@ export async function getOrCreateWord(word: string) {
 export async function recordWordResult(
   exerciseId: number,
   wordId: number,
+  userId: number,
   isCorrect: boolean,
   attempts: number
 ) {
@@ -79,6 +83,7 @@ export async function recordWordResult(
   await db.insert(schema.wordExercises).values({
     exerciseId,
     wordId,
+    userId,
     isCorrect: isCorrect ? 1 : 0,
     attempts,
     createdAt: Math.floor(Date.now() / 1000),
@@ -102,7 +107,7 @@ export async function recordWordResult(
   }
 }
 
-export async function getMostDifficultWords(limit = 10) {
+export async function getMostDifficultWordsForUser(userId: number, limit = 10) {
   return db.select({
     id: schema.words.id,
     word: schema.words.word,
@@ -111,16 +116,29 @@ export async function getMostDifficultWords(limit = 10) {
     errorRatio: sql<number>`${schema.words.incorrectCount} * 1.0 / (${schema.words.correctCount} + ${schema.words.incorrectCount})`,
   })
     .from(schema.words)
-    .where(sql`${schema.words.correctCount} + ${schema.words.incorrectCount} > 0`)
+    .innerJoin(
+      schema.wordExercises,
+      eq(schema.words.id, schema.wordExercises.wordId)
+    )
+    .where(
+      and(
+        eq(schema.wordExercises.userId, userId),
+        sql`${schema.words.correctCount} + ${schema.words.incorrectCount} > 0`
+      )
+    )
     .orderBy(desc(sql`${schema.words.incorrectCount} * 1.0 / (${schema.words.correctCount} + ${schema.words.incorrectCount})`))
     .limit(limit);
 }
 
 // Progress repository functions
-export async function getProgress() {
-  const progress = await db.select().from(schema.progress);
+export async function getProgressForUser(userId: number) {
+  const progress = await db.select()
+    .from(schema.progress)
+    .where(eq(schema.progress.userId, userId));
+    
   if (progress.length === 0) {
     const result = await db.insert(schema.progress).values({
+      userId,
       updatedAt: Math.floor(Date.now() / 1000),
     }).returning();
     return result[0];
@@ -129,12 +147,13 @@ export async function getProgress() {
 }
 
 export async function updateProgress(
+  userId: number,
   exerciseCount: number,
   correctWords: number,
   incorrectWords: number
 ) {
   // Get existing progress
-  const progress = await getProgress();
+  const progress = await getProgressForUser(userId);
   
   // Check if the last exercise was today
   const now = new Date();
@@ -163,5 +182,25 @@ export async function updateProgress(
       streakDays,
       lastExerciseDate: Math.floor(Date.now() / 1000),
       updatedAt: Math.floor(Date.now() / 1000),
-    });
+    })
+    .where(eq(schema.progress.userId, userId));
+}
+
+// User preferences repository functions
+export async function getUserPreferences(userId: number): Promise<UserPreferences> {
+  const preferences = await db.select()
+    .from(schema.userPreferences)
+    .where(eq(schema.userPreferences.userId, userId));
+    
+  if (preferences.length === 0) {
+    return {};
+  }
+  
+  const pref = preferences[0];
+  return {
+    age: pref.age || undefined,
+    interests: pref.interests || undefined,
+    difficultyLevel: pref.difficultyLevel || undefined,
+    topicsOfInterest: pref.topicsOfInterest || undefined,
+  };
 } 

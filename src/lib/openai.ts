@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { UserPreferences } from './service';
 
 // Check if OpenAI API key is defined in environment variables
 if (!process.env.OPENAI_API_KEY) {
@@ -59,14 +60,38 @@ export async function evaluateSpelling(
 }
 
 /**
- * Generate a new practice exercise based on user's history
+ * Generate a new practice exercise based on user's history and preferences
  * @param difficultWords Array of words the user has struggled with
+ * @param preferences User preferences for personalization
  * @returns Object with original text in Swedish and its English translation
  */
-export async function generateExercise(difficultWords: string[] = []) {
+export async function generateExercise(
+  difficultWords: string[] = [],
+  preferences?: UserPreferences
+) {
   const wordContext = difficultWords.length > 0 
     ? `Include some of these words the student has struggled with: ${difficultWords.join(', ')}.` 
     : '';
+
+  // Build personalization context based on user preferences
+  let personalizationContext = '';
+  if (preferences) {
+    if (preferences.age) {
+      personalizationContext += `The student is ${preferences.age} years old. `;
+    }
+    
+    if (preferences.interests) {
+      personalizationContext += `The student is interested in: ${preferences.interests}. `;
+    }
+    
+    if (preferences.topicsOfInterest) {
+      personalizationContext += `Topics the student enjoys: ${preferences.topicsOfInterest}. `;
+    }
+    
+    if (preferences.difficultyLevel) {
+      personalizationContext += `Preferred difficulty level: ${preferences.difficultyLevel}. `;
+    }
+  }
 
   const response = await openai.chat.completions.create({
     model: DEFAULT_MODEL,
@@ -77,7 +102,8 @@ export async function generateExercise(difficultWords: string[] = []) {
         Create a short practice text in Swedish (2-3 sentences) that will be used for an English spelling exercise.
         The student will translate this to English.
         Create text appropriate for a student who knows English well but struggles with spelling.
-        Make the content engaging, relatable and age-appropriate for a school student.
+        Make the content engaging, relatable and age-appropriate for the student.
+        ${personalizationContext}
         ${wordContext}
         
         Respond in JSON format with:
@@ -99,14 +125,32 @@ export async function generateExercise(difficultWords: string[] = []) {
  * @param correctWordCount Total number of correctly spelled words
  * @param incorrectWordCount Total number of incorrectly spelled words
  * @param difficultWords Array of words the user consistently struggles with
+ * @param preferences User preferences for personalization
  * @returns A friendly progress report with insights and encouragement
  */
 export async function getProgressReport(
   exerciseCount: number,
   correctWordCount: number,
   incorrectWordCount: number,
-  difficultWords: string[] = []
+  difficultWords: string[] = [],
+  preferences?: UserPreferences
 ) {
+  // Build personalization context based on user preferences
+  let personalizationContext = '';
+  if (preferences) {
+    if (preferences.age) {
+      personalizationContext += `The student is ${preferences.age} years old. `;
+    }
+    
+    if (preferences.interests) {
+      personalizationContext += `The student is interested in: ${preferences.interests}. `;
+    }
+    
+    if (preferences.difficultyLevel) {
+      personalizationContext += `Current difficulty level: ${preferences.difficultyLevel}. `;
+    }
+  }
+
   const response = await openai.chat.completions.create({
     model: DEFAULT_MODEL,
     messages: [
@@ -115,7 +159,8 @@ export async function getProgressReport(
         content: `You are a supportive English tutor for a Swedish student with dyslexia.
         Create an encouraging progress report based on the student's performance data.
         Focus on celebrating improvements while gently identifying areas to work on.
-        Use a friendly, positive tone appropriate for encouraging a young student.
+        Use a friendly, positive tone appropriate for encouraging the student.
+        ${personalizationContext}
         
         Respond in JSON format with:
         - summary: A brief, encouraging summary of overall progress

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Exercise, SpellingResult } from '@/lib/service';
 import { useSpeechRecognition } from '@/lib/speech-recognition';
+import { useAuth } from '@/lib/auth-context';
 
 enum PracticeStep {
   Loading,
@@ -34,6 +35,7 @@ function SpeechRecognitionProvider({ children }: { children: React.ReactNode }) 
 // Inner component that uses speech recognition
 function PracticePageInner() {
   const router = useRouter();
+  const { user } = useAuth();
   const [step, setStep] = useState<PracticeStep>(PracticeStep.Loading);
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [writtenTranslation, setWrittenTranslation] = useState('');
@@ -62,6 +64,12 @@ function PracticePageInner() {
           method: 'POST',
         });
         
+        if (response.status === 401) {
+          // Redirect to login if not authenticated
+          router.push('/login');
+          return;
+        }
+        
         if (!response.ok) {
           throw new Error('Failed to load exercise');
         }
@@ -75,8 +83,10 @@ function PracticePageInner() {
       }
     }
     
-    loadExercise();
-  }, []);
+    if (user) {
+      loadExercise();
+    }
+  }, [user, router]);
 
   // Update spoken translation when transcript changes
   useEffect(() => {
@@ -444,6 +454,30 @@ function PracticePageInner() {
 
 // Main component that ensures client-side only rendering for speech recognition
 export default function PracticePage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+  
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
+        <div className="text-center">
+          <p className="text-xl text-gray-700">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return null; // Will redirect in the useEffect
+  }
+  
   return (
     <SpeechRecognitionProvider>
       <PracticePageInner />
