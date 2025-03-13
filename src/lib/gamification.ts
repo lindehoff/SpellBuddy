@@ -125,20 +125,17 @@ export async function checkAchievements(userId: number): Promise<any[]> {
   
   // Get all available achievements
   const allAchievements = await db.select()
-    .from(achievements)
-    .where(unlockedIds.length > 0 
-      ? and(
-          eq(achievements.id, achievements.id),
-          // Exclude already unlocked achievements
-          ...unlockedIds.map(id => eq(achievements.id, id).not())
-        )
-      : eq(achievements.id, achievements.id)
-    );
+    .from(achievements);
+    
+  // Filter out already unlocked achievements
+  const filteredAchievements = unlockedIds.length > 0
+    ? allAchievements.filter(achievement => !unlockedIds.includes(achievement.id))
+    : allAchievements;
   
   // Check each achievement to see if it should be unlocked
   const newlyUnlocked = [];
   
-  for (const achievement of allAchievements) {
+  for (const achievement of filteredAchievements) {
     let shouldUnlock = false;
     
     switch (achievement.achievementType) {

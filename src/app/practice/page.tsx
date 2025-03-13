@@ -46,6 +46,7 @@ function PracticePageInner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isLoadingExercise, setIsLoadingExercise] = useState(true);
+  const [currentWordAttempts, setCurrentWordAttempts] = useState(0);
   
   // Use our custom speech recognition hook
   const {
@@ -163,6 +164,7 @@ function PracticePageInner() {
   const startPracticingWords = () => {
     setCurrentWordIndex(0);
     setCurrentWordAttempt('');
+    setCurrentWordAttempts(0); // Reset attempts counter
     setStep(PracticeStep.PracticeWords);
   };
 
@@ -171,6 +173,9 @@ function PracticePageInner() {
     if (!spellingResult || !spellingResult.misspelledWords) return;
     
     const currentWord = spellingResult.misspelledWords[currentWordIndex];
+    
+    // Increment attempt counter
+    setCurrentWordAttempts(currentWordAttempts + 1);
     
     if (currentWordAttempt.trim().toLowerCase() === currentWord.correct.toLowerCase()) {
       // Word is correct, mark it as learned
@@ -187,6 +192,7 @@ function PracticePageInner() {
         if (currentWordIndex < spellingResult.misspelledWords.length - 1) {
           setCurrentWordIndex(currentWordIndex + 1);
           setCurrentWordAttempt('');
+          setCurrentWordAttempts(0); // Reset attempts for next word
         } else {
           // All words practiced, go to progress page
           router.push('/progress');
@@ -199,6 +205,37 @@ function PracticePageInner() {
       // Word is incorrect, show error but let them try again
       setError(`That's not quite right. Try again!`);
       setTimeout(() => setError(''), 2000);
+    }
+  };
+
+  // Move to the next word after showing the answer
+  const moveToNextWord = async () => {
+    if (!spellingResult || !spellingResult.misspelledWords) return;
+    
+    const currentWord = spellingResult.misspelledWords[currentWordIndex];
+    
+    try {
+      // Still record the word for future practice
+      await fetch(`/api/exercises/${exercise?.id}/words`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ word: currentWord.correct }),
+      });
+      
+      // Move to next word or finish
+      if (currentWordIndex < spellingResult.misspelledWords.length - 1) {
+        setCurrentWordIndex(currentWordIndex + 1);
+        setCurrentWordAttempt('');
+        setCurrentWordAttempts(0); // Reset attempts for next word
+      } else {
+        // All words practiced, go to progress page
+        router.push('/progress');
+      }
+    } catch (err) {
+      setError('Failed to save word progress. Please try again.');
+      console.error(err);
     }
   };
 
@@ -309,12 +346,8 @@ function PracticePageInner() {
               <p className="text-gray-900 mb-8 font-medium">{exercise?.original}</p>
               
               <div className="mb-6">
-                <p className="text-gray-700 mb-2 font-medium">Your spoken translation:</p>
-                <p className="text-gray-900 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  {spokenTranslation || transcript}
-                </p>
-                
-                <p className="text-gray-700 mb-2 font-medium">Now write it out:</p>
+                <p className="text-gray-700 mb-2 font-medium">Now write your translation:</p>
+                <p className="text-sm text-gray-500 mb-3">Focus on spelling the words correctly. Don't worry about capitalization or punctuation.</p>
                 <textarea
                   value={writtenTranslation}
                   onChange={(e) => setWrittenTranslation(e.target.value)}
@@ -340,7 +373,7 @@ function PracticePageInner() {
             <h2 className="text-2xl font-bold mb-6">Spelling Results</h2>
             <div className="bg-white p-6 rounded-lg shadow-md mb-8">
               <div className="mb-6">
-                <p className="text-gray-700 mb-2 font-medium">Your score:</p>
+                <p className="text-gray-700 mb-2 font-medium">Your spelling score:</p>
                 <div className="flex justify-center items-center mb-4">
                   <div className="text-4xl font-bold text-indigo-600">
                     {spellingResult?.overallScore}/10
@@ -396,6 +429,7 @@ function PracticePageInner() {
         }
         
         const currentWord = spellingResult.misspelledWords[currentWordIndex];
+        const showAnswer = currentWordAttempts >= 5;
         
         return (
           <div className="text-center">
@@ -414,27 +448,56 @@ function PracticePageInner() {
                   {currentWord.misspelled}
                 </p>
                 
-                <p className="text-gray-700 mb-2 font-medium">Now try to spell it correctly:</p>
-                <input
-                  type="text"
-                  value={currentWordAttempt}
-                  onChange={(e) => setCurrentWordAttempt(e.target.value)}
-                  className="w-full p-4 border border-gray-300 rounded-lg text-lg text-center text-gray-900"
-                  placeholder="Type the correct spelling..."
-                />
+                {showAnswer ? (
+                  <div className="mb-6">
+                    <p className="text-gray-700 mb-2 font-medium">The correct spelling is:</p>
+                    <p className="text-2xl mb-6 text-green-600 font-bold">
+                      {currentWord.correct}
+                    </p>
+                    <button
+                      onClick={moveToNextWord}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
+                    >
+                      {currentWordIndex < spellingResult.misspelledWords.length - 1 ? 'Next Word' : 'Finish Practice'}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-700 mb-2 font-medium">Now try to spell it correctly:</p>
+                    <p className="text-sm text-gray-500 mb-2">Attempt {currentWordAttempts + 1} of 5</p>
+                    <input
+                      type="text"
+                      value={currentWordAttempt}
+                      onChange={(e) => setCurrentWordAttempt(e.target.value)}
+                      className="w-full p-4 border border-gray-300 rounded-lg text-lg text-center text-gray-900"
+                      placeholder="Type the correct spelling..."
+                    />
+                    
+                    {error && (
+                      <p className="text-red-600 mt-4 mb-2 font-medium">{error}</p>
+                    )}
+                    
+                    <div className="mt-4 flex justify-center gap-4">
+                      <button
+                        onClick={checkWordAttempt}
+                        disabled={!currentWordAttempt.trim()}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200 disabled:bg-indigo-300"
+                      >
+                        Check
+                      </button>
+                      
+                      {currentWordAttempts >= 2 && (
+                        <button
+                          onClick={() => setCurrentWordAttempts(5)} // Force show answer
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
+                        >
+                          Show Answer
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
-              
-              {error && (
-                <p className="text-red-600 mb-4 font-medium">{error}</p>
-              )}
-              
-              <button
-                onClick={checkWordAttempt}
-                disabled={!currentWordAttempt.trim()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200 disabled:bg-indigo-300"
-              >
-                Check
-              </button>
             </div>
           </div>
         );

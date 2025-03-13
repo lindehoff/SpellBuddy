@@ -4,11 +4,11 @@ import * as service from '@/lib/service';
 // POST /api/exercises/[id]/written - Submit written translation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    // Ensure params is properly accessed in an async context
-    const { id } = params;
+    // Fix: Properly handle params in an async context
+    const { id } = context.params;
     const exerciseId = parseInt(id);
     
     if (isNaN(exerciseId)) {
