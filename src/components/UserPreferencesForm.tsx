@@ -87,21 +87,21 @@ export default function UserPreferencesForm({ onComplete }: UserPreferencesFormP
   ];
   
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold text-indigo-700 mb-6">Tell Us About Yourself</h2>
-      <p className="text-gray-700 mb-6">
+    <div className="glass-card p-8 rounded-xl max-w-2xl mx-auto">
+      <h2 className="text-2xl font-bold gradient-text mb-6">Tell Us About Yourself</h2>
+      <p className="opacity-90 mb-6">
         This information helps us create personalized exercises that match your interests and skill level.
       </p>
       
       {error && (
-        <div className="bg-red-50 text-red-700 p-3 rounded-md mb-4">
+        <div className="bg-red-500/20 text-red-300 p-4 rounded-xl mb-6 border border-red-500/20">
           {error}
         </div>
       )}
       
       <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="age" className="block text-gray-700 font-medium mb-2">
+        <div className="mb-6">
+          <label htmlFor="age" className="block font-medium mb-2">
             Age
           </label>
           <input
@@ -109,31 +109,31 @@ export default function UserPreferencesForm({ onComplete }: UserPreferencesFormP
             id="age"
             value={age}
             onChange={(e) => setAge(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 text-white placeholder-white/50"
             min="5"
             max="100"
           />
         </div>
         
-        <div className="mb-4">
-          <label htmlFor="interests" className="block text-gray-700 font-medium mb-2">
+        <div className="mb-6">
+          <label htmlFor="interests" className="block font-medium mb-2">
             What are your hobbies and interests?
           </label>
           <textarea
             id="interests"
             value={interests}
             onChange={(e) => setInterests(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 text-white placeholder-white/50"
             rows={3}
             placeholder="Tell us what you enjoy doing..."
           />
         </div>
         
-        <div className="mb-4">
-          <label className="block text-gray-700 font-medium mb-2">
+        <div className="mb-6">
+          <label className="block font-medium mb-3">
             Select topics you're interested in:
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {availableTopics.map(topic => (
               <div key={topic} className="flex items-center">
                 <input
@@ -141,9 +141,9 @@ export default function UserPreferencesForm({ onComplete }: UserPreferencesFormP
                   id={`topic-${topic}`}
                   checked={topicsOfInterest.includes(topic)}
                   onChange={() => handleTopicToggle(topic)}
-                  className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="mr-2 h-5 w-5 text-cyan-400 focus:ring-cyan-400 border-white/30 rounded bg-white/10"
                 />
-                <label htmlFor={`topic-${topic}`} className="text-gray-700">
+                <label htmlFor={`topic-${topic}`} className="opacity-90">
                   {topic}
                 </label>
               </div>
@@ -151,12 +151,12 @@ export default function UserPreferencesForm({ onComplete }: UserPreferencesFormP
           </div>
         </div>
         
-        <div className="mb-6">
-          <label className="block text-gray-700 font-medium mb-2">
+        <div className="mb-8">
+          <label className="block font-medium mb-3">
             Difficulty Level:
           </label>
-          <div className="flex space-x-4">
-            {['easy', 'medium', 'hard'].map(level => (
+          <div className="flex flex-wrap gap-4">
+            {['beginner', 'intermediate', 'advanced', 'expert'].map(level => (
               <div key={level} className="flex items-center">
                 <input
                   type="radio"
@@ -165,9 +165,9 @@ export default function UserPreferencesForm({ onComplete }: UserPreferencesFormP
                   value={level}
                   checked={difficultyLevel === level}
                   onChange={() => setDifficultyLevel(level)}
-                  className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  className="mr-2 h-5 w-5 text-cyan-400 focus:ring-cyan-400 border-white/30 bg-white/10"
                 />
-                <label htmlFor={`difficulty-${level}`} className="text-gray-700 capitalize">
+                <label htmlFor={`difficulty-${level}`} className="opacity-90 capitalize">
                   {level}
                 </label>
               </div>
@@ -179,7 +179,7 @@ export default function UserPreferencesForm({ onComplete }: UserPreferencesFormP
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg text-lg transition-colors duration-200 disabled:opacity-50"
+            className="shine-button text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 hover:scale-105 disabled:opacity-50"
           >
             {isSubmitting ? 'Saving...' : 'Save Preferences'}
           </button>

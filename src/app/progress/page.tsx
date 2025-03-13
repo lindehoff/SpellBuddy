@@ -75,7 +75,8 @@ export default function ProgressPage() {
     return (
       <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
         <div className="text-center">
-          <p className="text-xl text-gray-700 font-medium">Loading...</p>
+          <div className="animate-spin h-10 w-10 border-4 border-cyan-400 rounded-full border-t-transparent mx-auto mb-4"></div>
+          <p className="text-xl font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -88,9 +89,9 @@ export default function ProgressPage() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center">
-        <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-        <p className="text-xl font-medium text-indigo-700">Analyzing your progress...</p>
-        <p className="text-gray-600 mt-2">We're creating your personalized progress report.</p>
+        <div className="animate-spin h-16 w-16 border-4 border-cyan-400 rounded-full border-t-transparent mb-6"></div>
+        <p className="text-xl font-medium gradient-text">Analyzing your progress...</p>
+        <p className="opacity-80 mt-2">We're creating your personalized progress report.</p>
       </div>
     );
   }
@@ -98,12 +99,12 @@ export default function ProgressPage() {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 border border-red-200 font-medium">
+        <div className="glass-card bg-red-500/10 text-red-300 p-6 rounded-xl mb-6 border border-red-500/20 font-medium">
           {error}
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg"
+          className="shine-button text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105"
         >
           Try Again
         </button>
@@ -114,14 +115,14 @@ export default function ProgressPage() {
   if (!progress) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-300">
-          <h2 className="text-2xl font-bold text-indigo-700 mb-4">No Progress Yet</h2>
-          <p className="text-gray-800 mb-6">
+        <div className="glass-card p-8 rounded-xl text-center max-w-2xl mx-auto">
+          <h2 className="text-2xl font-bold gradient-text mb-6">No Progress Yet</h2>
+          <p className="mb-8 text-lg opacity-90">
             You haven't completed any exercises yet. Start practicing to see your progress!
           </p>
           <button
             onClick={() => router.push('/practice')}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg"
+            className="shine-button text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105"
           >
             Start Practicing
           </button>
@@ -132,71 +133,77 @@ export default function ProgressPage() {
   
   return (
     <div className="container mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-indigo-700 mb-8 text-center">Your Progress</h1>
+      {/* Decorative elements */}
+      <div className="absolute top-40 left-20 w-64 h-64 bg-cyan-500/20 rounded-full filter blur-3xl animate-pulse-slow"></div>
+      <div className="absolute bottom-20 right-20 w-80 h-80 bg-indigo-500/20 rounded-full filter blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
       
-      {/* Gamification Elements */}
-      {progress.level && progress.experiencePoints && progress.nextLevelPoints && (
-        <AchievementDisplay
-          level={progress.level}
-          experiencePoints={progress.experiencePoints}
-          nextLevelPoints={progress.nextLevelPoints}
-          achievements={progress.achievements || []}
-          onAchievementsSeen={handleAchievementsSeen}
-        />
-      )}
-      
-      {/* Streak Display */}
-      {progress.streak !== undefined && progress.streak > 0 && (
-        <div className="bg-white p-4 rounded-lg shadow-md border border-gray-300 mb-8">
-          <h3 className="text-xl font-bold text-indigo-700 mb-3">Current Streak</h3>
-          <div className="flex items-center justify-center">
-            <div className="text-5xl text-orange-500 mr-3">🔥</div>
-            <div className="text-4xl font-bold text-indigo-700">{progress.streak}</div>
-            <div className="ml-2 text-gray-700">days in a row</div>
+      <div className="relative z-10">
+        <h1 className="text-4xl font-bold gradient-text mb-8 text-center font-poppins">Your Progress</h1>
+        
+        {/* Gamification Elements */}
+        {progress.level && progress.experiencePoints && progress.nextLevelPoints && (
+          <AchievementDisplay
+            level={progress.level}
+            experiencePoints={progress.experiencePoints}
+            nextLevelPoints={progress.nextLevelPoints}
+            achievements={progress.achievements || []}
+            onAchievementsSeen={handleAchievementsSeen}
+          />
+        )}
+        
+        {/* Streak Display */}
+        {progress.streak !== undefined && progress.streak > 0 && (
+          <div className="glass-card p-6 rounded-xl mb-8 animate-float">
+            <h3 className="text-xl font-bold gradient-text mb-4">Current Streak</h3>
+            <div className="flex items-center justify-center">
+              <div className="text-6xl mr-4">🔥</div>
+              <div className="text-5xl font-bold gradient-text">{progress.streak}</div>
+              <div className="ml-3 text-xl opacity-90">days in a row</div>
+            </div>
+            <p className="text-center opacity-80 mt-4">
+              Keep practicing daily to maintain your streak!
+            </p>
           </div>
-          <p className="text-center text-gray-600 mt-2">
-            Keep practicing daily to maintain your streak!
-          </p>
-        </div>
-      )}
-      
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-300">
-        <h2 className="text-2xl font-bold text-indigo-600 mb-4">Summary</h2>
-        <p className="text-gray-800 mb-4">{progress.summary}</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-300">
-          <h2 className="text-xl font-bold text-green-600 mb-3">Your Strengths</h2>
-          <p className="text-gray-800">{progress.strengths}</p>
+        )}
+        
+        <div className="glass-card p-8 rounded-xl mb-8">
+          <h2 className="text-2xl font-bold gradient-text mb-4">Summary</h2>
+          <p className="opacity-90 text-lg">{progress.summary}</p>
         </div>
         
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-300">
-          <h2 className="text-xl font-bold text-amber-600 mb-3">Areas to Focus On</h2>
-          <p className="text-gray-800">{progress.challenges}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="glass-card p-6 rounded-xl transition-all duration-300 hover:bg-white/10">
+            <h2 className="text-xl font-bold text-cyan-300 mb-4">Your Strengths</h2>
+            <p className="opacity-90">{progress.strengths}</p>
+          </div>
+          
+          <div className="glass-card p-6 rounded-xl transition-all duration-300 hover:bg-white/10">
+            <h2 className="text-xl font-bold text-cyan-300 mb-4">Areas to Focus On</h2>
+            <p className="opacity-90">{progress.challenges}</p>
+          </div>
         </div>
-      </div>
-      
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-300">
-        <h2 className="text-xl font-bold text-indigo-600 mb-3">Learning Tips</h2>
-        <ul className="list-disc pl-6 space-y-2">
-          {progress.tips.map((tip, index) => (
-            <li key={index} className="text-gray-800">{tip}</li>
-          ))}
-        </ul>
-      </div>
-      
-      <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
-        <p className="text-indigo-800 font-medium text-center">{progress.encouragement}</p>
-      </div>
-      
-      <div className="mt-8 text-center">
-        <button
-          onClick={() => router.push('/practice')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
-        >
-          Continue Practicing
-        </button>
+        
+        <div className="glass-card p-8 rounded-xl mb-8">
+          <h2 className="text-xl font-bold gradient-text mb-4">Learning Tips</h2>
+          <ul className="list-disc pl-6 space-y-3">
+            {progress.tips.map((tip, index) => (
+              <li key={index} className="opacity-90">{tip}</li>
+            ))}
+          </ul>
+        </div>
+        
+        <div className="glass-card p-6 rounded-xl bg-white/10 mb-8">
+          <p className="font-medium text-center text-lg gradient-text">{progress.encouragement}</p>
+        </div>
+        
+        <div className="mt-10 text-center">
+          <button
+            onClick={() => router.push('/practice')}
+            className="shine-button text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 hover:scale-105"
+          >
+            Continue Practicing
+          </button>
+        </div>
       </div>
     </div>
   );

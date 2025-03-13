@@ -41,49 +41,55 @@ export default function AchievementDisplay({
   return (
     <div className="mb-8">
       {/* Level and XP Bar */}
-      <div className="bg-white p-4 rounded-lg shadow-md border border-gray-300 mb-4">
-        <div className="flex items-center justify-between mb-2">
+      <div className="glass-card p-6 rounded-xl mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <div className="bg-indigo-600 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg">
+            <div className="bg-gradient-to-br from-cyan-400 to-blue-500 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-lg shadow-lg">
               {level}
             </div>
-            <span className="ml-2 font-semibold text-gray-800">Level {level}</span>
+            <div className="ml-3">
+              <span className="font-bold text-xl">Level {level}</span>
+              <p className="text-sm opacity-80">Keep practicing to level up!</p>
+            </div>
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm font-medium">
             {experiencePoints} / {nextLevelPoints} XP
           </div>
         </div>
         
         {/* XP Progress Bar */}
-        <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+        <div className="w-full bg-white/10 rounded-full h-5 overflow-hidden backdrop-blur-sm">
           <div 
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500 ease-out"
+            className="shine-button h-full rounded-full transition-all duration-500 ease-out"
             style={{ width: `${progressPercentage}%` }}
           ></div>
+        </div>
+        <div className="mt-2 text-xs opacity-80 text-right">
+          {nextLevelPoints - experiencePoints} XP until next level
         </div>
       </div>
       
       {/* New Achievement Notification */}
       {showAchievements && newAchievements.length > 0 && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-bounce-in">
-            <h3 className="text-2xl font-bold text-center mb-4 text-indigo-700">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="glass-card rounded-xl max-w-md w-full p-8 animate-bounce-in my-8">
+            <h3 className="text-2xl font-bold text-center mb-6 gradient-text">
               Achievement Unlocked!
             </h3>
             
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
               {newAchievements.map((achievement) => (
-                <div key={achievement.id} className="text-center mb-4">
-                  <div className="text-5xl mb-2">{achievement.icon}</div>
-                  <h4 className="text-xl font-semibold text-indigo-600">{achievement.name}</h4>
-                  <p className="text-gray-700">{achievement.description}</p>
+                <div key={achievement.id} className="text-center mb-6 animate-float w-full">
+                  <div className="text-6xl mb-3">{achievement.icon}</div>
+                  <h4 className="text-xl font-bold gradient-text mb-2">{achievement.name}</h4>
+                  <p className="opacity-90">{achievement.description}</p>
                 </div>
               ))}
             </div>
             
             <button
               onClick={() => setShowAchievements(false)}
-              className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+              className="mt-6 w-full shine-button text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 hover:scale-105"
             >
               Awesome!
             </button>
@@ -93,19 +99,19 @@ export default function AchievementDisplay({
       
       {/* Recent Achievements */}
       {achievements.length > 0 && (
-        <div className="bg-white p-4 rounded-lg shadow-md border border-gray-300">
-          <h3 className="text-xl font-bold text-indigo-700 mb-4">Recent Achievements</h3>
+        <div className="glass-card p-6 rounded-xl">
+          <h3 className="text-xl font-bold gradient-text mb-6">Recent Achievements</h3>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {achievements.map((achievement) => (
               <div 
                 key={achievement.id} 
-                className={`p-3 rounded-lg border ${achievement.isNew ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200'} text-center`}
+                className={`p-4 rounded-xl glass-card ${achievement.isNew ? 'bg-white/20' : ''} text-center transition-all duration-300 hover:transform hover:scale-105`}
               >
-                <div className="text-4xl mb-2">{achievement.icon}</div>
-                <h4 className="font-semibold text-indigo-600">{achievement.name}</h4>
-                <p className="text-sm text-gray-600">{achievement.description}</p>
-                <p className="text-xs text-gray-500 mt-2">
+                <div className="text-5xl mb-3">{achievement.icon}</div>
+                <h4 className="font-bold text-cyan-300 mb-2">{achievement.name}</h4>
+                <p className="text-sm opacity-90">{achievement.description}</p>
+                <p className="text-xs opacity-70 mt-2">
                   {new Date(achievement.unlockedAt * 1000).toLocaleDateString()}
                 </p>
               </div>
@@ -114,7 +120,7 @@ export default function AchievementDisplay({
           
           <button
             onClick={() => window.location.href = '/achievements'}
-            className="mt-4 w-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+            className="mt-6 w-full bg-white/10 hover:bg-white/20 font-medium py-3 px-4 rounded-lg transition-all duration-300"
           >
             View All Achievements
           </button>

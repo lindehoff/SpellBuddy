@@ -56,7 +56,8 @@ export default function AchievementsPage() {
     return (
       <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
         <div className="text-center">
-          <p className="text-xl text-gray-700 font-medium">Loading...</p>
+          <div className="animate-spin h-10 w-10 border-4 border-cyan-400 rounded-full border-t-transparent mx-auto mb-4"></div>
+          <p className="text-xl font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -69,8 +70,8 @@ export default function AchievementsPage() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center">
-        <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-        <p className="text-xl font-medium text-indigo-700">Loading achievements...</p>
+        <div className="animate-spin h-16 w-16 border-4 border-cyan-400 rounded-full border-t-transparent mb-6"></div>
+        <p className="text-xl font-medium gradient-text">Loading achievements...</p>
       </div>
     );
   }
@@ -78,12 +79,12 @@ export default function AchievementsPage() {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 border border-red-200 font-medium">
+        <div className="glass-card bg-red-500/10 text-red-300 p-6 rounded-xl mb-6 border border-red-500/20 font-medium">
           {error}
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg"
+          className="shine-button text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105"
         >
           Try Again
         </button>
@@ -104,72 +105,78 @@ export default function AchievementsPage() {
   
   // Get type display names
   const typeNames: Record<string, string> = {
-    'streak': 'Streak Achievements',
-    'exercises': 'Exercise Achievements',
-    'perfect_exercises': 'Perfect Exercise Achievements',
-    'correct_words': 'Word Achievements',
-    'level': 'Level Achievements',
-    'challenges': 'Challenge Achievements',
-    'other': 'Other Achievements',
+    'streak': '🔥 Streak Achievements',
+    'exercises': '📝 Exercise Achievements',
+    'perfect_exercises': '✨ Perfect Exercise Achievements',
+    'correct_words': '🔤 Word Achievements',
+    'level': '🏆 Level Achievements',
+    'challenges': '🧩 Challenge Achievements',
+    'other': '🎯 Other Achievements',
   };
   
   return (
     <div className="container mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-indigo-700 mb-8 text-center">Achievements</h1>
+      {/* Decorative elements */}
+      <div className="absolute top-40 right-20 w-64 h-64 bg-cyan-500/20 rounded-full filter blur-3xl animate-pulse-slow"></div>
+      <div className="absolute bottom-20 left-20 w-80 h-80 bg-indigo-500/20 rounded-full filter blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
       
-      {achievements.length === 0 ? (
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-300 text-center">
-          <h2 className="text-2xl font-bold text-indigo-700 mb-4">No Achievements Yet</h2>
-          <p className="text-gray-800 mb-6">
-            Complete exercises and practice regularly to unlock achievements!
-          </p>
+      <div className="relative z-10">
+        <h1 className="text-4xl font-bold gradient-text mb-8 text-center font-poppins">Achievements</h1>
+        
+        {achievements.length === 0 ? (
+          <div className="glass-card p-8 rounded-xl text-center max-w-2xl mx-auto">
+            <h2 className="text-2xl font-bold gradient-text mb-6">No Achievements Yet</h2>
+            <p className="mb-8 text-lg opacity-90">
+              Complete exercises and practice regularly to unlock achievements!
+            </p>
+            <button
+              onClick={() => router.push('/practice')}
+              className="shine-button text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105"
+            >
+              Start Practicing
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-10">
+            {Object.entries(achievementsByType).map(([type, typeAchievements]) => (
+              <div key={type} className="glass-card p-8 rounded-xl">
+                <h2 className="text-2xl font-bold gradient-text mb-6 font-poppins">{typeNames[type] || type}</h2>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {typeAchievements.map(achievement => (
+                    <div 
+                      key={achievement.id} 
+                      className={`glass-card p-6 rounded-xl ${achievement.unlockedAt ? 'bg-white/10' : 'opacity-70'} transition-all duration-300 hover:transform hover:scale-105`}
+                    >
+                      <div className="flex items-center mb-4">
+                        <div className="text-5xl mr-4">{achievement.icon}</div>
+                        <h3 className="text-xl font-bold text-cyan-300">{achievement.name}</h3>
+                      </div>
+                      <p className="mb-4 opacity-90">{achievement.description}</p>
+                      
+                      {achievement.unlockedAt ? (
+                        <p className="text-sm text-cyan-300 font-medium">
+                          Unlocked on {new Date(achievement.unlockedAt * 1000).toLocaleDateString()}
+                        </p>
+                      ) : (
+                        <p className="text-sm opacity-70">Not yet unlocked</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="mt-10 text-center">
           <button
-            onClick={() => router.push('/practice')}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg"
+            onClick={() => router.push('/progress')}
+            className="shine-button text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 hover:scale-105"
           >
-            Start Practicing
+            View Progress
           </button>
         </div>
-      ) : (
-        <div className="space-y-8">
-          {Object.entries(achievementsByType).map(([type, typeAchievements]) => (
-            <div key={type} className="bg-white p-6 rounded-lg shadow-md border border-gray-300">
-              <h2 className="text-2xl font-bold text-indigo-700 mb-4">{typeNames[type] || type}</h2>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {typeAchievements.map(achievement => (
-                  <div 
-                    key={achievement.id} 
-                    className={`p-4 rounded-lg border ${achievement.unlockedAt ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-gray-50 opacity-70'}`}
-                  >
-                    <div className="flex items-center mb-2">
-                      <div className="text-4xl mr-3">{achievement.icon}</div>
-                      <h3 className="text-lg font-semibold text-indigo-700">{achievement.name}</h3>
-                    </div>
-                    <p className="text-gray-700 mb-2">{achievement.description}</p>
-                    
-                    {achievement.unlockedAt ? (
-                      <p className="text-sm text-green-600 font-medium">
-                        Unlocked on {new Date(achievement.unlockedAt * 1000).toLocaleDateString()}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-gray-500">Not yet unlocked</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      
-      <div className="mt-8 text-center">
-        <button
-          onClick={() => router.push('/progress')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200"
-        >
-          View Progress
-        </button>
       </div>
     </div>
   );
