@@ -46,25 +46,26 @@ RUN mkdir -p /app/data && \
     chown -R nextjs:nodejs /app
 
 # Create a startup script to handle database initialization and migrations
-RUN echo '#!/bin/sh \n\
-# Create drizzle directory if it doesn'\''t exist \n\
-mkdir -p /app/drizzle \n\
-\n\
-# Initialize database if it doesn'\''t exist \n\
-if [ ! -f "/app/data/sqlite.db" ]; then \n\
-  echo "Database does not exist. Initializing..." \n\
-  npm run db:generate \n\
-  npm run db:migrate \n\
-else \n\
-  # Check if we need to run migrations \n\
-  echo "Checking for pending migrations..." \n\
-  npm run db:generate \n\
-  npm run db:migrate \n\
-fi \n\
-\n\
-# Start the application \n\
-exec npm start \n\
-' > /app/start.sh && chmod +x /app/start.sh
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Create drizzle directory if it does not exist' >> /app/start.sh && \
+    echo 'mkdir -p /app/drizzle' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Initialize database if it does not exist' >> /app/start.sh && \
+    echo 'if [ ! -f "/app/data/sqlite.db" ]; then' >> /app/start.sh && \
+    echo '  echo "Database does not exist. Initializing..."' >> /app/start.sh && \
+    echo '  npm run db:generate' >> /app/start.sh && \
+    echo '  npm run db:migrate' >> /app/start.sh && \
+    echo 'else' >> /app/start.sh && \
+    echo '  # Check if we need to run migrations' >> /app/start.sh && \
+    echo '  echo "Checking for pending migrations..."' >> /app/start.sh && \
+    echo '  npm run db:generate' >> /app/start.sh && \
+    echo '  npm run db:migrate' >> /app/start.sh && \
+    echo 'fi' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Start the application' >> /app/start.sh && \
+    echo 'exec npm start' >> /app/start.sh && \
+    chmod +x /app/start.sh
 
 USER nextjs
 
