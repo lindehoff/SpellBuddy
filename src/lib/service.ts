@@ -58,9 +58,16 @@ export type Achievement = {
 
 // Service functions
 export async function createNewExercise(userId: number): Promise<Exercise> {
-  // Get difficult words to include in the exercise
-  const difficultWords = await repository.getMostDifficultWordsForUser(userId, 5);
-  const wordList = difficultWords.map(w => w.word);
+  // Get difficult words to include in the exercise - randomly select a subset
+  const difficultWords = await repository.getMostDifficultWordsForUser(userId, 10);
+  // Randomly select 2-3 difficult words to focus on (if available)
+  const shuffledWords = difficultWords.sort(() => 0.5 - Math.random());
+  const selectedWords = shuffledWords.slice(0, Math.min(shuffledWords.length, Math.floor(Math.random() * 2) + 2));
+  const wordList = selectedWords.map(w => w.word);
+  
+  // Get words the user has mastered (to exclude from exercises)
+  const masteredWords = await repository.getMasteredWordsForUser(userId);
+  const masteredWordList = masteredWords.map(w => w.word);
   
   // Get user preferences
   const preferences = await repository.getUserPreferences(userId);
@@ -70,32 +77,36 @@ export async function createNewExercise(userId: number): Promise<Exercise> {
   const userLevel = user?.level || 1;
   
   // Calculate difficulty based on user level and preferences
-  let difficulty = 1;
+  let baseDifficulty = 1;
   if (preferences.adaptiveDifficulty === 1) {
     // Use adaptive difficulty
-    difficulty = preferences.currentDifficultyScore || 1;
+    baseDifficulty = preferences.currentDifficultyScore || 1;
   } else {
     // Use static difficulty based on preference
     switch (preferences.difficultyLevel) {
       case 'beginner':
-        difficulty = Math.max(1, Math.min(25, userLevel));
+        baseDifficulty = Math.max(1, Math.min(25, userLevel));
         break;
       case 'intermediate':
-        difficulty = Math.max(25, Math.min(50, userLevel * 1.5));
+        baseDifficulty = Math.max(25, Math.min(50, userLevel * 1.5));
         break;
       case 'advanced':
-        difficulty = Math.max(50, Math.min(75, userLevel * 2));
+        baseDifficulty = Math.max(50, Math.min(75, userLevel * 2));
         break;
       case 'expert':
-        difficulty = Math.max(75, Math.min(100, userLevel * 3));
+        baseDifficulty = Math.max(75, Math.min(100, userLevel * 3));
         break;
       default:
-        difficulty = Math.max(1, Math.min(100, userLevel));
+        baseDifficulty = Math.max(1, Math.min(100, userLevel));
     }
   }
   
+  // Add some randomization to difficulty to ensure variety (±10%)
+  const randomFactor = 0.9 + (Math.random() * 0.2); // Between 0.9 and 1.1
+  const difficulty = Math.max(1, Math.min(100, Math.round(baseDifficulty * randomFactor)));
+  
   // Generate exercise with OpenAI
-  const exercise = await ai.generateExercise(wordList, preferences, difficulty);
+  const exercise = await ai.generateExercise(wordList, preferences, difficulty, masteredWordList);
   
   // Save to database
   const id = await repository.createExercise(userId, exercise.original, difficulty);

@@ -81,15 +81,23 @@ export async function evaluateSpelling(
  * @param difficultWords Array of words the user has struggled with
  * @param preferences User preferences for personalization
  * @param difficulty Difficulty level (1-100 scale)
+ * @param masteredWords Array of words the user has already mastered (to exclude)
  * @returns Object with original text in Swedish and its English translation
  */
 export async function generateExercise(
   difficultWords: string[] = [],
   preferences?: UserPreferences,
-  difficulty: number = 1
+  difficulty: number = 1,
+  masteredWords: string[] = []
 ) {
+  // Create context for difficult words to include
   const wordContext = difficultWords.length > 0 
-    ? `Include some of these words the student has struggled with: ${difficultWords.join(', ')}.` 
+    ? `Try to include some of these words the student has struggled with: ${difficultWords.join(', ')}.` 
+    : '';
+    
+  // Create context for mastered words to exclude
+  const excludeContext = masteredWords.length > 0
+    ? `Avoid using these words that the student has already mastered: ${masteredWords.join(', ')}.`
     : '';
 
   // Build personalization context based on user preferences
@@ -100,11 +108,11 @@ export async function generateExercise(
     }
     
     if (preferences.interests) {
-      personalizationContext += `The student is interested in: ${preferences.interests}. `;
+      personalizationContext += `The student has mentioned interests in: ${preferences.interests}. Use these interests only as loose inspiration, not as strict themes. `;
     }
     
     if (preferences.topicsOfInterest) {
-      personalizationContext += `Topics the student enjoys: ${preferences.topicsOfInterest}. `;
+      personalizationContext += `Topics the student enjoys: ${preferences.topicsOfInterest}. Use these as occasional inspiration, but vary topics widely. `;
     }
   }
   
@@ -130,12 +138,22 @@ export async function generateExercise(
         content: `You are a helpful English tutor for a Swedish student with dyslexia. 
         Create a short practice text in Swedish (2-3 sentences) that will be used for an English spelling exercise.
         The student will translate this to English.
-        Create text appropriate for a student who knows English well but struggles with spelling.
-        Make the content engaging, relatable and age-appropriate for the student.
+        
+        IMPORTANT GUIDELINES:
+        - Create text appropriate for a student who knows English well but struggles with spelling
+        - Make the content engaging, relatable and age-appropriate
+        - VARY THE TOPICS WIDELY - do not fixate on a single theme or interest
+        - Each new exercise should feel fresh and different from previous ones
+        - Use the student's interests only as loose inspiration, not as strict themes
+        - Include unexpected and creative scenarios, everyday situations, or interesting facts
+        - Rotate between different themes: nature, science, history, daily life, fantasy, technology, etc.
+        - Avoid repetitive patterns in content or structure
+        
         ${personalizationContext}
         
         The difficulty level should be ${difficultyDescription}.
         ${wordContext}
+        ${excludeContext}
         
         Respond in JSON format with:
         - original: The Swedish text (2-3 sentences)
@@ -144,7 +162,7 @@ export async function generateExercise(
       },
     ],
     response_format: { type: 'json_object' },
-    temperature: 0.8,
+    temperature: 0.9,
   });
 
   return JSON.parse(response.choices[0].message.content || '{}');

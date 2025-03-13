@@ -149,6 +149,28 @@ export async function getMostDifficultWordsForUser(userId: number, limit = 10) {
     .limit(limit);
 }
 
+export async function getMasteredWordsForUser(userId: number) {
+  // Get words that have been practiced at least 3 times and have a low error ratio (less than 0.2)
+  return db.select({
+    id: schema.words.id,
+    word: schema.words.word,
+  })
+    .from(schema.words)
+    .innerJoin(
+      schema.wordExercises,
+      eq(schema.words.id, schema.wordExercises.wordId)
+    )
+    .where(
+      and(
+        eq(schema.wordExercises.userId, userId),
+        sql`${schema.words.correctCount} >= 3`,
+        sql`${schema.words.incorrectCount} * 1.0 / (${schema.words.correctCount} + ${schema.words.incorrectCount}) < 0.2`
+      )
+    )
+    .groupBy(schema.words.id)
+    .having(sql`COUNT(*) >= 3`); // Word has been practiced in at least 3 exercises
+}
+
 // Progress repository functions
 export async function getProgressForUser(userId: number) {
   const progress = await db.select()

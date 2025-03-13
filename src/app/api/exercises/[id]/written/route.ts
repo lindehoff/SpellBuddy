@@ -7,9 +7,8 @@ export async function POST(
   context: { params: { id: string } }
 ) {
   try {
-    // Fix: Properly handle params in an async context
-    const { id } = context.params;
-    const exerciseId = parseInt(id);
+    // Get the exercise ID from the URL parameter
+    const exerciseId = parseInt(context.params.id);
     
     if (isNaN(exerciseId)) {
       return NextResponse.json(

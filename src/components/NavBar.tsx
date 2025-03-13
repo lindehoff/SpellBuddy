@@ -10,6 +10,7 @@ export default function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const pathname = usePathname();
   
   // Hide navbar on scroll down, show on scroll up
@@ -33,6 +34,23 @@ export default function NavBar() {
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  const toggleUserMenu = () => {
+    setIsUserMenuOpen(!isUserMenuOpen);
+  };
+  
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (isUserMenuOpen && !target.closest('.user-menu-container')) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isUserMenuOpen]);
   
   return (
     <header 
@@ -86,28 +104,37 @@ export default function NavBar() {
               {loading ? (
                 <span className="text-gray-500 py-2 md:py-0 px-3">Loading...</span>
               ) : user ? (
-                <div className="md:relative group">
-                  <button className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium py-2 md:py-1 px-3 rounded-md hover:bg-indigo-50 w-full md:w-auto text-left">
+                <div className="md:relative user-menu-container">
+                  <button 
+                    onClick={toggleUserMenu}
+                    className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium py-2 md:py-1 px-3 rounded-md hover:bg-indigo-50 w-full md:w-auto text-left"
+                  >
                     <span className="mr-1">{user.username}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
                   
-                  <div className="md:absolute md:right-0 md:mt-2 md:py-2 md:w-48 md:bg-white md:rounded-md md:shadow-lg md:border md:border-gray-200 md:hidden group-hover:md:block">
-                    <Link 
-                      href="/preferences" 
-                      className="block px-4 py-2 text-indigo-600 hover:bg-indigo-50"
-                    >
-                      Preferences
-                    </Link>
-                    <button
-                      onClick={() => logout()}
-                      className="block w-full text-left px-4 py-2 text-indigo-600 hover:bg-indigo-50"
-                    >
-                      Log Out
-                    </button>
-                  </div>
+                  {isUserMenuOpen && (
+                    <div className="md:absolute md:right-0 md:mt-2 md:py-2 md:w-48 md:bg-white md:rounded-md md:shadow-lg md:border md:border-gray-200 z-50">
+                      <Link 
+                        href="/preferences" 
+                        className="block px-4 py-2 text-indigo-600 hover:bg-indigo-50"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        Preferences
+                      </Link>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setIsUserMenuOpen(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-indigo-600 hover:bg-indigo-50"
+                      >
+                        Log Out
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
