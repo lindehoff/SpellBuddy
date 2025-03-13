@@ -84,20 +84,52 @@ npm start
 
 ## 🐳 Docker Deployment
 
-### Using Docker Hub Image
+### Using Docker with Persistent Data
 
-Pull and run the latest image from Docker Hub:
-```bash
-docker pull yourusername/spellbuddy:latest
-docker run -p 3000:3000 -e JWT_SECRET=your_jwt_secret -e OPENAI_API_KEY=your_openai_api_key yourusername/spellbuddy:latest
+Run the container with a volume to persist the database:
+
+```shell
+# Create a directory for persistent data
+mkdir -p ~/spellbuddy-data
+
+# Run the container with a mounted volume
+docker run -d -p 3000:3000 \
+  -v ~/spellbuddy-data:/app/data \
+  -e JWT_SECRET=your_jwt_secret \
+  -e OPENAI_API_KEY=your_openai_api_key \
+  -e OPENAI_MODEL=gpt-4o-mini \
+  yourusername/spellbuddy:latest
 ```
 
-### Building Docker Image Locally
+The database will be automatically created if it doesn't exist, and migrations will be run on container startup.
 
-Build and run the Docker image locally:
-```bash
-docker build -t spellbuddy .
-docker run -p 3000:3000 -e JWT_SECRET=your_jwt_secret -e OPENAI_API_KEY=your_openai_api_key spellbuddy
+### Running Database Migrations Manually
+
+If you need to run database migrations manually (for example, after updating the application):
+
+```shell
+# Get the container ID
+CONTAINER_ID=$(docker ps -q -f "ancestor=yourusername/spellbuddy:latest")
+
+# Run migrations
+docker exec $CONTAINER_ID npm run db:migrate
+```
+
+### Cross-Platform Development
+
+If you're developing on an ARM-based Mac (M1/M2/M3) but deploying to an AMD64 server, make sure to use the amd64 version of the image:
+
+```shell
+# Pull the amd64 version explicitly
+docker pull --platform linux/amd64 yourusername/spellbuddy:latest
+
+# Run with platform specified
+docker run --platform linux/amd64 -d -p 3000:3000 \
+  -v ~/spellbuddy-data:/app/data \
+  -e JWT_SECRET=your_jwt_secret \
+  -e OPENAI_API_KEY=your_openai_api_key \
+  -e OPENAI_MODEL=gpt-4o-mini \
+  yourusername/spellbuddy:latest
 ```
 
 ## 🔄 CI/CD Pipeline
