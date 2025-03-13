@@ -10,8 +10,14 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
-# Note: We're not building the application here because
-# the .next directory is already built and copied from the CI/CD pipeline
+# Build the application
+# We'll build it here as a fallback, but the .next directory might already exist from CI/CD
+RUN if [ ! -d ".next" ] || [ -z "$(ls -A .next)" ]; then \
+    echo "Building Next.js application..." && \
+    npm run build; \
+    else \
+    echo "Using existing .next directory"; \
+    fi
 
 # Production stage
 FROM node:18-alpine AS runner
