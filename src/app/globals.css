@@ -53,6 +53,29 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
+/* Mobile-specific glass card with reduced transparency */
+@media (max-width: 768px) {
+  .glass-card {
+    background: var(--card-bg);
+    background-color: rgba(30, 41, 59, 0.9); /* Darker background for mobile */
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  
+  [data-theme="light"] .glass-card {
+    background-color: rgba(255, 255, 255, 0.95); /* Lighter but more opaque for light theme */
+  }
+}
+
+/* Prevent text selection in practice mode to discourage text-to-speech */
+.practice-mode-text {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
 /* Improve text rendering */
 * {
   -webkit-font-smoothing: antialiased;

@@ -265,7 +265,7 @@ function PracticePageInner() {
           <div className="text-center">
             <h2 className="text-xl sm:text-2xl font-bold gradient-text mb-4 sm:mb-6">Translate this text 🔄</h2>
             <div className="glass-card p-4 sm:p-6 rounded-xl mb-6 sm:mb-8 text-lg sm:text-xl">
-              <p className="font-medium">{exercise?.original}</p>
+              <p className="font-medium practice-mode-text">{exercise?.original}</p>
             </div>
             <button
               onClick={() => setStep(PracticeStep.SpeakTranslation)}
@@ -282,7 +282,7 @@ function PracticePageInner() {
             <h2 className="text-xl sm:text-2xl font-bold gradient-text mb-4 sm:mb-6">Speak your translation 🎙️</h2>
             <div className="glass-card p-4 sm:p-6 rounded-xl mb-6 sm:mb-8">
               <p className="opacity-90 mb-3 sm:mb-4 font-medium">Original text:</p>
-              <p className="mb-6 sm:mb-8 font-medium">{exercise?.original}</p>
+              <p className="mb-6 sm:mb-8 font-medium practice-mode-text">{exercise?.original}</p>
               
               <div className="mb-5 sm:mb-6">
                 <p className="opacity-90 mb-2 font-medium">Your spoken translation:</p>
@@ -338,30 +338,57 @@ function PracticePageInner() {
         
       case PracticeStep.WriteTranslation:
         return (
-          <div className="text-center">
-            <h2 className="text-xl sm:text-2xl font-bold gradient-text mb-4 sm:mb-6">Write your translation ✏️</h2>
-            <div className="glass-card p-4 sm:p-6 rounded-xl mb-6 sm:mb-8">
-              <p className="opacity-90 mb-3 sm:mb-4 font-medium">Original text:</p>
-              <p className="mb-6 sm:mb-8 font-medium">{exercise?.original}</p>
+          <div className="space-y-6">
+            <div className="glass-card p-6 rounded-xl">
+              <h2 className="text-xl font-semibold mb-4">Write the English translation</h2>
+              <p className="mb-6 opacity-80">Type the English translation of the Swedish text below:</p>
               
-              <div className="mb-5 sm:mb-6">
-                <p className="opacity-90 mb-2 font-medium">Now write your translation:</p>
-                <p className="text-sm opacity-70 mb-3">Focus on spelling the words correctly. Don&apos;t worry about capitalization or punctuation.</p>
+              <div className="mb-4 p-4 bg-white/10 rounded-lg">
+                <p className="text-lg font-medium practice-mode-text">{exercise?.original}</p>
+              </div>
+              
+              <div className="space-y-4">
                 <textarea
                   value={writtenTranslation}
                   onChange={(e) => setWrittenTranslation(e.target.value)}
-                  className="w-full p-3 sm:p-4 bg-white/10 border border-white/20 rounded-lg text-base sm:text-lg min-h-32 text-white placeholder-white/50"
+                  className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/50 transition-colors duration-200"
+                  rows={4}
                   placeholder="Type your translation here..."
-                />
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  data-gramm="false"
+                  data-gramm_editor="false"
+                  data-enable-grammarly="false"
+                ></textarea>
+                
+                <div className="text-xs opacity-70 italic">
+                  <p>Note: Autocorrect and spell-check are disabled to help you practice your spelling skills.</p>
+                </div>
+                
+                <button
+                  onClick={submitWrittenTranslation}
+                  disabled={isSubmitting || !writtenTranslation.trim()}
+                  className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                    isSubmitting || !writtenTranslation.trim()
+                      ? 'bg-white/10 cursor-not-allowed opacity-50'
+                      : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white'
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Checking...
+                    </span>
+                  ) : (
+                    'Submit Translation'
+                  )}
+                </button>
               </div>
-              
-              <button
-                onClick={submitWrittenTranslation}
-                disabled={isSubmitting || !writtenTranslation.trim()}
-                className="shine-button text-white font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-lg text-base sm:text-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 w-full sm:w-auto"
-              >
-                {isSubmitting ? '🔍 Checking...' : '🔍 Check Spelling'}
-              </button>
             </div>
           </div>
         );

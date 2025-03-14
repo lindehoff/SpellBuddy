@@ -61,7 +61,7 @@ export async function evaluateSpelling(
           role: 'system',
           content: `You are a helpful English spelling tutor for a Swedish student with dyslexia. 
           Your task is to evaluate her spelling when translating from Swedish to English.
-          Focus ONLY on actual spelling errors of individual words, not grammar, punctuation, or capitalization.
+          Focus PRIMARILY on complex or uncommon words, and be more lenient with common everyday words.
           
           Do NOT flag issues like:
           - Missing capital letters at the beginning of sentences
@@ -69,9 +69,18 @@ export async function evaluateSpelling(
           - Grammar mistakes
           - Word order or sentence structure
           - Missing words or extra words
+          - Minor typos in very common words (like "the", "and", "to", "of", etc.)
           
           ONLY identify words that are genuinely misspelled (wrong letters, missing letters, etc.).
-          Be lenient and only flag clear spelling mistakes, not minor variations or typos.
+          Be lenient with common words and only flag clear spelling mistakes in more complex words.
+          
+          Common words (be very lenient with these):
+          - Articles (the, a, an)
+          - Pronouns (I, you, he, she, it, we, they, etc.)
+          - Common prepositions (in, on, at, by, for, with, etc.)
+          - Common conjunctions (and, but, or, so, because, etc.)
+          - Basic verbs (is, are, was, were, have, has, do, does, etc.)
+          - Common everyday words (day, time, good, bad, big, small, etc.)
           
           For each misspelled word, provide:
           - The misspelled word exactly as written

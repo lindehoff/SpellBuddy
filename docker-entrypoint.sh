@@ -82,13 +82,14 @@ fi
 # Initialize database if it does not exist
 if [ ! -s "/app/data/sqlite.db" ]; then
   echo "Database does not exist or is empty. Initializing..."
-  npm run db:generate || echo "Schema generation failed, but continuing startup"
+  # Use node directly instead of npm run
+  node -r @swc-node/register src/lib/db/schema-generator.ts || echo "Schema generation failed, but continuing startup"
   sleep 2
-  npm run db:migrate || echo "Migration failed, but continuing startup"
+  node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
 else
   # Check if we need to run migrations
   echo "Checking for pending migrations..."
-  npm run db:migrate || echo "Migration failed, but continuing startup"
+  node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
 fi
 
 # Print environment variables that will be available to the application
@@ -99,6 +100,6 @@ echo "DATABASE_URL=$DATABASE_URL"
 echo "OPENAI_API_KEY is $(if [ -z "$OPENAI_API_KEY" ]; then echo "NOT "; fi)set"
 echo "JWT_SECRET is $(if [ -z "$JWT_SECRET" ]; then echo "NOT "; fi)set"
 
-# Start the application
+# Start the application using node directly instead of npm
 echo "Starting Next.js application..."
-exec npm start 
+exec node .next/server/app/server.js 
