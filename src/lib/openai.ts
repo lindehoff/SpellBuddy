@@ -9,9 +9,14 @@ if (!process.env.OPENAI_API_KEY) {
   console.log('OpenAI API key length:', process.env.OPENAI_API_KEY.length);
 }
 
-// Determine if we're in a build/SSR context
-const isBuildOrSSR = typeof window === 'undefined' && process.env.NODE_ENV === 'production';
-console.log('Build/SSR context:', isBuildOrSSR);
+// Determine if we're in a build context or if we should use the OpenAI API
+// We only want to use fallbacks during the build process, not during runtime SSR
+const isActualBuildProcess = typeof window === 'undefined' && 
+                            process.env.NODE_ENV === 'production' && 
+                            !process.env.OPENAI_API_KEY;
+
+console.log('Is actual build process:', isActualBuildProcess);
+console.log('Should use OpenAI API:', !isActualBuildProcess);
 
 // Create OpenAI API client with conditional initialization
 export const openai = new OpenAI({
@@ -34,9 +39,9 @@ export async function evaluateSpelling(
   userAnswer: string, 
   translatedText: string
 ) {
-  // Return mock data during build to prevent API calls
-  if (isBuildOrSSR) {
-    console.log('In build/SSR context, returning mock data for evaluateSpelling');
+  // Return mock data only during the actual build process
+  if (isActualBuildProcess) {
+    console.log('In build process, returning mock data for evaluateSpelling');
     return { misspelledWords: [], encouragement: "Great job!", overallScore: 10 };
   }
 
@@ -164,9 +169,9 @@ export async function generateExercise(
   difficulty: number = 1,
   masteredWords: string[] = []
 ) {
-  // Return random fallback data during build to prevent API calls
-  if (isBuildOrSSR) {
-    console.log('In build/SSR context, returning fallback exercise');
+  // Return random fallback data only during the actual build process
+  if (isActualBuildProcess) {
+    console.log('In build process, returning fallback exercise');
     const randomIndex = Math.floor(Math.random() * fallbackExercises.length);
     return fallbackExercises[randomIndex];
   }
@@ -310,9 +315,9 @@ export async function getProgressReport(
   difficultWords: string[] = [],
   preferences?: UserPreferences
 ) {
-  // Return mock data during build to prevent API calls
-  if (isBuildOrSSR) {
-    console.log('In build/SSR context, returning mock progress report');
+  // Return mock data only during the actual build process
+  if (isActualBuildProcess) {
+    console.log('In build process, returning mock progress report');
     return {
       summary: "You're making great progress!",
       strengths: "You're doing well with your spelling.",
