@@ -87,7 +87,7 @@ fi
 echo "Copied journal files to all possible locations"
 
 # Create a helper script to find the journal file
-cat > /app/find-journal.js << 'EOFJOURNAL'
+cat > /app/find-journal.js << 'EOF'
 const fs = require('fs');
 const path = require('path');
 
@@ -117,14 +117,14 @@ for (const loc of locations) {
 
 console.log('Journal file not found in any of the expected locations');
 process.exit(1);
-EOFJOURNAL
+EOF
 
 # Run the helper script to verify journal file locations
 echo "Verifying journal file locations:"
 node /app/find-journal.js || echo "Warning: Journal file verification failed"
 
 # Create a migration patch script to handle the error
-cat > /app/migration-patch.js << 'EOFMIGRATION'
+cat > /app/migration-patch.js << 'EOF'
 const fs = require('fs');
 const path = require('path');
 
@@ -159,7 +159,7 @@ async function createTablesDirectly() {
 
 // Run the function
 createTablesDirectly();
-EOFMIGRATION
+EOF
 
 # Initialize database if it does not exist
 if [ ! -s "/app/data/sqlite.db" ]; then
@@ -242,7 +242,7 @@ fi
 if [ ! -f "src/app/globals.css" ]; then
   echo "Creating global CSS file in src directory..."
   mkdir -p src/app
-  cat > src/app/globals.css << 'EOFCSS'
+  cat > src/app/globals.css << 'EOF'
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -270,7 +270,7 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
-EOFCSS
+EOF
   echo "Global CSS file created"
 fi
 
@@ -278,7 +278,7 @@ fi
 if [ ! -f "src/pages/_document.tsx" ] && [ ! -f "src/pages/_document.js" ]; then
   echo "Creating custom document file..."
   mkdir -p src/pages
-  cat > src/pages/_document.tsx << 'EOFDOC'
+  cat > src/pages/_document.tsx << 'EOF'
 import { Html, Head, Main, NextScript } from 'next/document'
 
 export default function Document() {
@@ -294,7 +294,7 @@ export default function Document() {
     </Html>
   )
 }
-EOFDOC
+EOF
   echo "Custom document file created"
 fi
 
@@ -320,7 +320,7 @@ else
 fi
 
 # Create a script to directly inject CSS into HTML files
-cat > /app/inject-inline-css.js << 'EOFINLINE'
+cat > /app/inject-inline-css.js << 'EOF'
 const fs = require('fs');
 const path = require('path');
 
@@ -502,7 +502,7 @@ const injectInlineCSS = () => {
 };
 
 injectInlineCSS();
-EOFINLINE
+EOF
 
 # Run the inline CSS injection script
 echo "Running inline CSS injection script..."
@@ -528,7 +528,7 @@ if [ -d ".next" ]; then
     mkdir -p .next/static/css
     
     # Create a basic CSS file with essential styles
-    cat > .next/static/css/fallback.css << 'EOFFALLBACK'
+    cat > .next/static/css/fallback.css << 'EOF'
     /* Fallback CSS for SpellBuddy */
     :root {
       --foreground-rgb: 0, 0, 0;
@@ -605,10 +605,10 @@ if [ -d ".next" ]; then
         box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1);
       }
     }
-EOFFALLBACK
+    EOF
 
     # Create a script to inject the CSS
-    cat > /app/inject-css.js << 'EOFINJECTOR'
+    cat > /app/inject-css.js << 'EOF'
     const fs = require('fs');
     const path = require('path');
 
@@ -668,7 +668,7 @@ EOFFALLBACK
     };
 
     injectCss();
-EOFINJECTOR
+    EOF
 
     # Run the CSS injection script
     echo "Running CSS injection script..."
