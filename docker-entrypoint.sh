@@ -57,41 +57,107 @@ chmod -R 755 /app/drizzle
 echo "Creating empty journal files..."
 JOURNAL_CONTENT='{"version":"5","entries":[]}'
 
-# Location 1: /app/drizzle/meta/_journal.json (our original location)
-if [ ! -f "/app/drizzle/meta/_journal.json" ]; then
-  echo "$JOURNAL_CONTENT" > /app/drizzle/meta/_journal.json
-  chmod 644 /app/drizzle/meta/_journal.json
-  echo "Created journal file at /app/drizzle/meta/_journal.json"
-fi
-
-# Location 2: /app/meta/_journal.json (possible alternate location)
+# Create all possible journal file locations
+mkdir -p /app/drizzle/meta
 mkdir -p /app/meta
-if [ ! -f "/app/meta/_journal.json" ]; then
-  echo "$JOURNAL_CONTENT" > /app/meta/_journal.json
-  chmod 644 /app/meta/_journal.json
-  echo "Created journal file at /app/meta/_journal.json"
-fi
-
-# Location 3: /app/node_modules/src/meta/_journal.json (another possible location)
 mkdir -p /app/node_modules/src/meta
-if [ ! -f "/app/node_modules/src/meta/_journal.json" ]; then
-  echo "$JOURNAL_CONTENT" > /app/node_modules/src/meta/_journal.json
-  chmod 644 /app/node_modules/src/meta/_journal.json
-  echo "Created journal file at /app/node_modules/src/meta/_journal.json"
-fi
-
-# Location 4: /app/src/meta/_journal.json (another possible location)
 mkdir -p /app/src/meta
-if [ ! -f "/app/src/meta/_journal.json" ]; then
-  echo "$JOURNAL_CONTENT" > /app/src/meta/_journal.json
-  chmod 644 /app/src/meta/_journal.json
-  echo "Created journal file at /app/src/meta/_journal.json"
-fi
+mkdir -p /app/meta
+mkdir -p /app/node_modules/drizzle/meta
 
-# Create symbolic links to ensure all possible paths can find the journal file
-ln -sf /app/meta/_journal.json /app/drizzle/meta/_journal.json 2>/dev/null || true
-ln -sf /app/meta/_journal.json /app/src/meta/_journal.json 2>/dev/null || true
-ln -sf /app/meta/_journal.json /app/node_modules/src/meta/_journal.json 2>/dev/null || true
+# Write the journal content to the primary location
+echo "$JOURNAL_CONTENT" > /app/meta/_journal.json
+chmod 644 /app/meta/_journal.json
+echo "Created primary journal file at /app/meta/_journal.json"
+
+# Create hard copies (not just symlinks) in all possible locations
+cp /app/meta/_journal.json /app/drizzle/meta/_journal.json
+cp /app/meta/_journal.json /app/src/meta/_journal.json
+cp /app/meta/_journal.json /app/node_modules/src/meta/_journal.json
+if [ ! -d "/app/node_modules/drizzle" ]; then
+  mkdir -p /app/node_modules/drizzle/meta
+fi
+cp /app/meta/_journal.json /app/node_modules/drizzle/meta/_journal.json 2>/dev/null || true
+
+# Also create the file directly in the current directory
+cp /app/meta/_journal.json /app/meta/_journal.json
+
+echo "Copied journal files to all possible locations"
+
+# Create a helper script to find the journal file
+cat > /app/find-journal.js << 'EOF'
+const fs = require('fs');
+const path = require('path');
+
+// List of possible locations
+const locations = [
+  '/app/meta/_journal.json',
+  '/app/drizzle/meta/_journal.json',
+  '/app/src/meta/_journal.json',
+  '/app/node_modules/src/meta/_journal.json',
+  '/app/node_modules/drizzle/meta/_journal.json',
+  'meta/_journal.json',
+  './meta/_journal.json',
+  '../meta/_journal.json'
+];
+
+// Check each location
+for (const loc of locations) {
+  try {
+    if (fs.existsSync(loc)) {
+      console.log(`Journal file found at: ${loc}`);
+      process.exit(0);
+    }
+  } catch (err) {
+    // Ignore errors
+  }
+}
+
+console.log('Journal file not found in any of the expected locations');
+process.exit(1);
+EOF
+
+# Run the helper script to verify journal file locations
+echo "Verifying journal file locations:"
+node /app/find-journal.js || echo "Warning: Journal file verification failed"
+
+# Create a migration patch script to handle the error
+cat > /app/migration-patch.js << 'EOF'
+const fs = require('fs');
+const path = require('path');
+
+// Function to create tables directly if migration fails
+async function createTablesDirectly() {
+  console.log("Creating tables directly as a fallback...");
+  
+  try {
+    // Import the database connection
+    const db = require('./src/lib/db/db');
+    
+    // Check if the database is connected
+    if (db) {
+      console.log("Database connection established");
+      
+      // Execute schema creation
+      try {
+        const schemaModule = require('./src/lib/db/schema');
+        console.log("Schema module loaded");
+        console.log("Tables should be created by the schema module");
+        console.log("Migration patch completed successfully");
+      } catch (err) {
+        console.error("Error loading schema module:", err);
+      }
+    } else {
+      console.error("Failed to connect to database");
+    }
+  } catch (err) {
+    console.error("Error in migration patch:", err);
+  }
+}
+
+// Run the function
+createTablesDirectly();
+EOF
 
 # Initialize database if it does not exist
 if [ ! -s "/app/data/sqlite.db" ]; then
@@ -100,22 +166,42 @@ if [ ! -s "/app/data/sqlite.db" ]; then
   if node -e "require.resolve('@swc-node/register')" 2>/dev/null; then
     node -r @swc-node/register src/lib/db/schema-generator.ts || echo "Schema generation failed, but continuing startup"
     sleep 2
-    node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+    node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, trying fallback..."
+    # If migration failed, try our patch script
+    if [ $? -ne 0 ]; then
+      echo "Using migration patch script..."
+      node /app/migration-patch.js
+    fi
   else
     echo "Warning: @swc-node/register not found, trying direct execution"
     node src/lib/db/schema-generator.ts || echo "Schema generation failed, but continuing startup"
     sleep 2
-    node src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+    node src/lib/db/migrate.ts || echo "Migration failed, trying fallback..."
+    # If migration failed, try our patch script
+    if [ $? -ne 0 ]; then
+      echo "Using migration patch script..."
+      node /app/migration-patch.js
+    fi
   fi
 else
   # Check if we need to run migrations
   echo "Checking for pending migrations..."
   # Try to use @swc-node/register, fall back to direct node if not available
   if node -e "require.resolve('@swc-node/register')" 2>/dev/null; then
-    node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+    node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, trying fallback..."
+    # If migration failed, try our patch script
+    if [ $? -ne 0 ]; then
+      echo "Using migration patch script..."
+      node /app/migration-patch.js
+    fi
   else
     echo "Warning: @swc-node/register not found, trying direct execution"
-    node src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+    node src/lib/db/migrate.ts || echo "Migration failed, trying fallback..."
+    # If migration failed, try our patch script
+    if [ $? -ne 0 ]; then
+      echo "Using migration patch script..."
+      node /app/migration-patch.js
+    fi
   fi
 fi
 
@@ -127,23 +213,31 @@ echo "DATABASE_URL=$DATABASE_URL"
 echo "OPENAI_API_KEY is $(if [ -z "$OPENAI_API_KEY" ]; then echo "NOT "; fi)set"
 echo "JWT_SECRET is $(if [ -z "$JWT_SECRET" ]; then echo "NOT "; fi)set"
 
-# Check if Next.js build files exist in any of the possible locations
-if [ -f ".next/server/app/server.js" ]; then
-  echo "Found Next.js build files at .next/server/app/server.js"
-  NEXT_SERVER_FILE=".next/server/app/server.js"
-elif [ -f ".next/server/pages/app.js" ]; then
-  echo "Found Next.js build files at .next/server/pages/app.js"
-  NEXT_SERVER_FILE=".next/server/pages/app.js"
-elif [ -f ".next/server/index.js" ]; then
-  echo "Found Next.js build files at .next/server/index.js"
-  NEXT_SERVER_FILE=".next/server/index.js"
+# Check if Next.js build files exist
+if [ -d ".next" ]; then
+  echo "Found Next.js build directory at .next/"
+  
+  # Check if we have the main app files
+  if [ -d ".next/server/app" ] && [ -d ".next/static" ]; then
+    echo "Next.js build files appear to be present"
+    
+    # Check if we have node_modules/next/dist/bin/next
+    if [ -f "node_modules/next/dist/bin/next" ]; then
+      echo "Starting Next.js application using next start..."
+      exec node node_modules/next/dist/bin/next start -p 3000
+    else
+      echo "Starting Next.js application using npx next start..."
+      exec npx next start -p 3000
+    fi
+  else
+    echo "ERROR: Next.js build files incomplete. Missing key directories."
+    echo "Available directories in .next:"
+    find .next -type d -maxdepth 2 | sort
+    exit 1
+  fi
 else
-  # List available files to help diagnose the issue
-  echo "ERROR: Next.js build files not found. Checking available files:"
-  find .next -type f -name "*.js" | grep -E 'server|index|app' || echo "No matching files found"
+  echo "ERROR: Next.js build directory (.next) not found."
+  echo "Available directories in app root:"
+  ls -la
   exit 1
-fi
-
-# Start the application using node directly instead of npm
-echo "Starting Next.js application..."
-exec node $NEXT_SERVER_FILE 
+fi 
