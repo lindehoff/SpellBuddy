@@ -62,7 +62,6 @@ mkdir -p /app/drizzle/meta
 mkdir -p /app/meta
 mkdir -p /app/node_modules/src/meta
 mkdir -p /app/src/meta
-mkdir -p /app/meta
 mkdir -p /app/node_modules/drizzle/meta
 
 # Write the journal content to the primary location
@@ -79,8 +78,11 @@ if [ ! -d "/app/node_modules/drizzle" ]; then
 fi
 cp /app/meta/_journal.json /app/node_modules/drizzle/meta/_journal.json 2>/dev/null || true
 
-# Also create the file directly in the current directory
-cp /app/meta/_journal.json /app/meta/_journal.json
+# Also create the file in the current working directory if needed
+if [ ! -f "./meta/_journal.json" ]; then
+  mkdir -p ./meta
+  cp /app/meta/_journal.json ./meta/_journal.json 2>/dev/null || true
+fi
 
 echo "Copied journal files to all possible locations"
 
@@ -213,9 +215,34 @@ echo "DATABASE_URL=$DATABASE_URL"
 echo "OPENAI_API_KEY is $(if [ -z "$OPENAI_API_KEY" ]; then echo "NOT "; fi)set"
 echo "JWT_SECRET is $(if [ -z "$JWT_SECRET" ]; then echo "NOT "; fi)set"
 
+# Verify Next.js installation
+echo "Verifying Next.js installation..."
+if [ -d "node_modules/next" ]; then
+  echo "Next.js package found in node_modules"
+  
+  # Check package.json for Next.js version
+  NEXT_VERSION=$(node -e "try { console.log(require('./package.json').dependencies.next); } catch(e) { console.log('unknown'); }")
+  echo "Next.js version in package.json: $NEXT_VERSION"
+  
+  # Check if the installed version matches
+  if [ -f "node_modules/next/package.json" ]; then
+    INSTALLED_VERSION=$(node -e "try { console.log(require('./node_modules/next/package.json').version); } catch(e) { console.log('unknown'); }")
+    echo "Installed Next.js version: $INSTALLED_VERSION"
+  else
+    echo "Warning: Next.js package.json not found in node_modules"
+  fi
+else
+  echo "Warning: Next.js package not found in node_modules, attempting to install..."
+  npm install next@15.2.2 --no-save
+fi
+
 # Check if Next.js build files exist
 if [ -d ".next" ]; then
   echo "Found Next.js build directory at .next/"
+  
+  # List the contents of the .next directory for debugging
+  echo "Contents of .next directory:"
+  ls -la .next
   
   # Check if we have the main app files
   if [ -d ".next/server/app" ] && [ -d ".next/static" ]; then
@@ -224,20 +251,48 @@ if [ -d ".next" ]; then
     # Check if we have node_modules/next/dist/bin/next
     if [ -f "node_modules/next/dist/bin/next" ]; then
       echo "Starting Next.js application using next start..."
+      # Use exec to replace the current process with Next.js
       exec node node_modules/next/dist/bin/next start -p 3000
     else
+      echo "Looking for next binary..."
+      find ./node_modules -name "next" -type f | grep -v "package.json" || echo "Next binary not found"
+      
+      echo "Checking for npx..."
+      which npx || echo "npx not found, installing..."
+      
+      if ! which npx > /dev/null; then
+        echo "Installing npx..."
+        apk add --no-cache npm
+      fi
+      
       echo "Starting Next.js application using npx next start..."
       exec npx next start -p 3000
     fi
   else
     echo "ERROR: Next.js build files incomplete. Missing key directories."
     echo "Available directories in .next:"
-    find .next -type d -maxdepth 2 | sort
-    exit 1
+    find .next -type d | sort
+    
+    # Try to start anyway as a last resort
+    echo "Attempting to start Next.js anyway as a last resort..."
+    if [ -f "node_modules/next/dist/bin/next" ]; then
+      exec node node_modules/next/dist/bin/next start -p 3000
+    else
+      exec npx next start -p 3000
+    fi
   fi
 else
   echo "ERROR: Next.js build directory (.next) not found."
   echo "Available directories in app root:"
   ls -la
-  exit 1
+  
+  # Try to build on the fly as a last resort
+  echo "Attempting to build Next.js on the fly..."
+  if [ -f "node_modules/next/dist/bin/next" ]; then
+    node node_modules/next/dist/bin/next build
+    exec node node_modules/next/dist/bin/next start -p 3000
+  else
+    npx next build
+    exec npx next start -p 3000
+  fi
 fi 
