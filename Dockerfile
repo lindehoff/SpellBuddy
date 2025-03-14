@@ -19,15 +19,22 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy only necessary files for the build
+# Copy configuration files needed for the build
 COPY next.config.js ./
 COPY tsconfig.json ./
 COPY drizzle.config.ts ./
+COPY tailwind.config.ts ./
+COPY postcss.config.mjs ./
 COPY public ./public
 COPY src ./src
 
-# Build the application
-RUN npm run build
+# Build the application with verbose output
+RUN echo "Building Next.js application..." && \
+    NODE_ENV=production npm run build && \
+    echo "Build completed successfully"
+
+# Verify CSS files were generated
+RUN find .next -name "*.css" || echo "Warning: No CSS files found in build output"
 
 # Production stage - using the smallest possible base image
 FROM alpine:3.19 AS runner

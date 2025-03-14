@@ -238,6 +238,66 @@ else
   chmod 755 public
 fi
 
+# Check for global CSS file in src directory
+if [ ! -f "src/app/globals.css" ]; then
+  echo "Creating global CSS file in src directory..."
+  mkdir -p src/app
+  cat > src/app/globals.css << 'EOF'
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+EOF
+  echo "Global CSS file created"
+fi
+
+# Create a custom document file if it doesn't exist
+if [ ! -f "src/pages/_document.tsx" ] && [ ! -f "src/pages/_document.js" ]; then
+  echo "Creating custom document file..."
+  mkdir -p src/pages
+  cat > src/pages/_document.tsx << 'EOF'
+import { Html, Head, Main, NextScript } from 'next/document'
+
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head>
+        <link rel="stylesheet" href="/_next/static/css/fallback.css" />
+      </Head>
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  )
+}
+EOF
+  echo "Custom document file created"
+fi
+
 # Verify Next.js installation
 echo "Verifying Next.js installation..."
 if [ -d "node_modules/next" ]; then
@@ -259,6 +319,195 @@ else
   npm install next@15.2.2 --no-save
 fi
 
+# Create a script to directly inject CSS into HTML files
+cat > /app/inject-inline-css.js << 'EOF'
+const fs = require('fs');
+const path = require('path');
+
+// Find HTML files
+const findHtmlFiles = (dir) => {
+  const results = [];
+  try {
+    const files = fs.readdirSync(dir, { withFileTypes: true });
+    
+    for (const file of files) {
+      const fullPath = path.join(dir, file.name);
+      if (file.isDirectory()) {
+        results.push(...findHtmlFiles(fullPath));
+      } else if (file.name.endsWith('.html') || file.name.endsWith('.js')) {
+        results.push(fullPath);
+      }
+    }
+  } catch (err) {
+    console.error(`Error reading directory ${dir}:`, err);
+  }
+  
+  return results;
+};
+
+// Basic CSS styles
+const inlineStyles = `
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    line-height: 1.5;
+    color: #333;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+  }
+  
+  a {
+    color: #0070f3;
+    text-decoration: none;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+  
+  button, .button {
+    background-color: #0070f3;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+  }
+  
+  button:hover, .button:hover {
+    background-color: #0051a2;
+  }
+  
+  input, textarea, select {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 0.25rem;
+    width: 100%;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  
+  .card {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    body {
+      color: #f5f5f5;
+      background-color: #1a1a1a;
+    }
+    
+    .card {
+      background-color: #2a2a2a;
+      box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1);
+    }
+  }
+</style>
+`;
+
+// Inject inline CSS
+const injectInlineCSS = () => {
+  try {
+    const htmlFiles = findHtmlFiles('/app/.next/server');
+    console.log(`Found ${htmlFiles.length} files to process`);
+    
+    let injectedCount = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        if (file.endsWith('.html')) {
+          let content = fs.readFileSync(file, 'utf8');
+          
+          // Check if styles are already injected
+          if (!content.includes('<style>') && content.includes('</head>')) {
+            // Inject styles before </head>
+            content = content.replace('</head>', `${inlineStyles}\n</head>`);
+            
+            fs.writeFileSync(file, content);
+            console.log(`Injected inline CSS into ${file}`);
+            injectedCount++;
+          }
+        } else if (file.endsWith('.js') && file.includes('app/page')) {
+          // For JavaScript files that might contain HTML (Next.js app router)
+          let content = fs.readFileSync(file, 'utf8');
+          
+          // Only inject if it seems to be a page component and doesn't already have styles
+          if (content.includes('export') && !content.includes('<style>')) {
+            // Look for a place to inject the styles - this is a simplistic approach
+            if (content.includes('return') && content.includes('<')) {
+              // Add the styles as a string literal in the component
+              content = content.replace(
+                /return\s*\(/,
+                `return (
+                <>
+                  <style dangerouslySetInnerHTML={{ __html: \`
+                    body {
+                      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                      line-height: 1.5;
+                      color: #333;
+                      background-color: #f5f5f5;
+                      margin: 0;
+                      padding: 0;
+                    }
+                    a { color: #0070f3; text-decoration: none; }
+                    a:hover { text-decoration: underline; }
+                    button, .button {
+                      background-color: #0070f3;
+                      color: white;
+                      border: none;
+                      padding: 0.5rem 1rem;
+                      border-radius: 0.25rem;
+                      cursor: pointer;
+                    }
+                    .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+                    .card {
+                      background-color: white;
+                      border-radius: 0.5rem;
+                      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                      padding: 1.5rem;
+                      margin-bottom: 1rem;
+                    }
+                    @media (prefers-color-scheme: dark) {
+                      body { color: #f5f5f5; background-color: #1a1a1a; }
+                      .card { background-color: #2a2a2a; }
+                    }
+                  \`}} />
+                `
+              );
+              
+              fs.writeFileSync(file, content);
+              console.log(`Injected inline CSS into ${file}`);
+              injectedCount++;
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`Error processing ${file}:`, err);
+      }
+    }
+    
+    console.log(`Inline CSS injection completed. Injected into ${injectedCount} files.`);
+  } catch (err) {
+    console.error('Error in inline CSS injection:', err);
+  }
+};
+
+injectInlineCSS();
+EOF
+
+# Run the inline CSS injection script
+echo "Running inline CSS injection script..."
+node /app/inject-inline-css.js || echo "Inline CSS injection failed, but continuing startup"
+
 # Check if Next.js build files exist
 if [ -d ".next" ]; then
   echo "Found Next.js build directory at .next/"
@@ -271,6 +520,161 @@ if [ -d ".next" ]; then
   echo "Checking for CSS files in the build..."
   find .next -name "*.css" || echo "No CSS files found in the build"
   
+  # Create a fallback CSS file if none exists
+  if [ -z "$(find .next -name "*.css" 2>/dev/null)" ]; then
+    echo "No CSS files found, creating fallback CSS..."
+    
+    # Create a directory for the fallback CSS
+    mkdir -p .next/static/css
+    
+    # Create a basic CSS file with essential styles
+    cat > .next/static/css/fallback.css << 'EOF'
+    /* Fallback CSS for SpellBuddy */
+    :root {
+      --foreground-rgb: 0, 0, 0;
+      --background-start-rgb: 214, 219, 220;
+      --background-end-rgb: 255, 255, 255;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --foreground-rgb: 255, 255, 255;
+        --background-start-rgb: 0, 0, 0;
+        --background-end-rgb: 0, 0, 0;
+      }
+    }
+
+    body {
+      color: rgb(var(--foreground-rgb));
+      background: linear-gradient(
+          to bottom,
+          transparent,
+          rgb(var(--background-end-rgb))
+        )
+        rgb(var(--background-start-rgb));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+        Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    }
+
+    a {
+      color: #0070f3;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    button, .button {
+      background-color: #0070f3;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+    }
+
+    button:hover, .button:hover {
+      background-color: #0051a2;
+    }
+
+    input, textarea, select {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 0.25rem;
+      width: 100%;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    .card {
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .card {
+        background-color: #1a1a1a;
+        box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1);
+      }
+    }
+    EOF
+
+    # Create a script to inject the CSS
+    cat > /app/inject-css.js << 'EOF'
+    const fs = require('fs');
+    const path = require('path');
+
+    // Find HTML files
+    const findHtmlFiles = (dir) => {
+      const results = [];
+      const files = fs.readdirSync(dir, { withFileTypes: true });
+      
+      for (const file of files) {
+        const fullPath = path.join(dir, file.name);
+        if (file.isDirectory()) {
+          results.push(...findHtmlFiles(fullPath));
+        } else if (file.name.endsWith('.html')) {
+          results.push(fullPath);
+        }
+      }
+      
+      return results;
+    };
+
+    // Inject CSS link into HTML files
+    const injectCss = () => {
+      try {
+        const cssPath = '/app/.next/static/css/fallback.css';
+        if (!fs.existsSync(cssPath)) {
+          console.error('Fallback CSS file not found');
+          return;
+        }
+        
+        const htmlFiles = findHtmlFiles('/app/.next/server');
+        console.log(`Found ${htmlFiles.length} HTML files to process`);
+        
+        for (const htmlFile of htmlFiles) {
+          try {
+            let content = fs.readFileSync(htmlFile, 'utf8');
+            
+            // Check if CSS is already injected
+            if (!content.includes('fallback.css')) {
+              // Inject CSS link before </head>
+              content = content.replace(
+                '</head>',
+                '<link rel="stylesheet" href="/_next/static/css/fallback.css" />\n</head>'
+              );
+              
+              fs.writeFileSync(htmlFile, content);
+              console.log(`Injected CSS into ${htmlFile}`);
+            }
+          } catch (err) {
+            console.error(`Error processing ${htmlFile}:`, err);
+          }
+        }
+        
+        console.log('CSS injection completed');
+      } catch (err) {
+        console.error('Error in CSS injection:', err);
+      }
+    };
+
+    injectCss();
+    EOF
+
+    # Run the CSS injection script
+    echo "Running CSS injection script..."
+    node /app/inject-css.js
+  fi
+
   # Check if we have the main app files
   if [ -d ".next/server/app" ] && [ -d ".next/static" ]; then
     echo "Next.js build files appear to be present"
