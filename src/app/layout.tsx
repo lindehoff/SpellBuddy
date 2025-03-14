@@ -37,7 +37,6 @@ export default function RootLayout({
           <AuthProvider>
             <div className="relative min-h-screen">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-purple-700 opacity-50 -z-10"></div>
-              <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] -z-10"></div>
               
               <NavBar />
               

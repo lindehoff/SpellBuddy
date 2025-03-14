@@ -5,10 +5,25 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DrizzleDB } from './types';
 
-// Define database path - use data directory in production
-const dbPath = process.env.NODE_ENV === 'production' 
-  ? '/app/data/sqlite.db'
-  : 'sqlite.db';
+// Define database path - use DATABASE_URL if set, otherwise use default paths
+let dbPath: string;
+if (process.env.DATABASE_URL) {
+  // Extract the file path from the DATABASE_URL
+  const fileUrl = process.env.DATABASE_URL;
+  console.log('Using DATABASE_URL:', fileUrl);
+  if (fileUrl.startsWith('file:')) {
+    dbPath = fileUrl.substring(5); // Remove 'file:' prefix
+  } else {
+    dbPath = fileUrl;
+  }
+} else {
+  // Use default paths
+  dbPath = process.env.NODE_ENV === 'production' 
+    ? '/app/data/sqlite.db'
+    : 'sqlite.db';
+}
+
+console.log('Database path resolved to:', dbPath);
 
 // Initialize SQLite database
 let db: DrizzleDB;

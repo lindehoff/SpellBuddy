@@ -4,6 +4,8 @@ import { UserPreferences } from './service';
 // Check if OpenAI API key is defined in environment variables
 if (!process.env.OPENAI_API_KEY) {
   console.warn('Missing OPENAI_API_KEY environment variable');
+} else {
+  console.log('OpenAI API key is configured:', process.env.OPENAI_API_KEY.substring(0, 10) + '...');
 }
 
 // Determine if we're in a build/SSR context
@@ -16,6 +18,7 @@ export const openai = new OpenAI({
 
 // Get the model from environment variables or use a default
 export const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+console.log('Using OpenAI model:', DEFAULT_MODEL);
 
 /**
  * Get an evaluation of spelling from the OpenAI API
@@ -35,6 +38,7 @@ export async function evaluateSpelling(
   }
 
   try {
+    console.log('Evaluating spelling with OpenAI...');
     const response = await openai.chat.completions.create({
       model: DEFAULT_MODEL,
       messages: [
@@ -81,10 +85,10 @@ export async function evaluateSpelling(
       response_format: { type: 'json_object' },
       temperature: 0.7,
     });
-
+    console.log('OpenAI evaluation completed successfully');
     return JSON.parse(response.choices[0].message.content || '{}');
   } catch (error) {
-    console.error('Error evaluating spelling:', error);
+    console.error('Error evaluating spelling with OpenAI:', error);
     return { misspelledWords: [], encouragement: "Error evaluating spelling", overallScore: 0 };
   }
 }
