@@ -69,7 +69,7 @@ body {
   
   /* Additional padding for mobile main content */
   main {
-    padding-top: 5rem !important; /* Ensure enough space below the navbar on mobile */
+    padding-top: 6rem !important; /* Ensure enough space below the navbar on mobile */
   }
 }
 
