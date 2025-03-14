@@ -66,6 +66,11 @@ body {
   [data-theme="light"] .glass-card {
     background-color: rgba(255, 255, 255, 0.95); /* Lighter but more opaque for light theme */
   }
+  
+  /* Additional padding for mobile main content */
+  main {
+    padding-top: 5rem !important; /* Ensure enough space below the navbar on mobile */
+  }
 }
 
 /* Prevent text selection in practice mode to discourage text-to-speech */

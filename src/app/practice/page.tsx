@@ -85,14 +85,40 @@ function PracticePageInner() {
       const textarea = document.querySelector('textarea');
       if (textarea) {
         textarea.addEventListener('input', handleTextareaInput);
-      }
-      
-      // Clean up
-      return () => {
-        if (textarea) {
+        
+        // Disable speech input methods
+        const disableSpeechInput = () => {
+          // This helps prevent some mobile dictation features
+          if (document.activeElement === textarea) {
+            (document.activeElement as HTMLElement).blur();
+            setTimeout(() => textarea.focus(), 10);
+          }
+        };
+        
+        // Listen for speech input start events
+        textarea.addEventListener('webkitspeechstart', disableSpeechInput);
+        textarea.addEventListener('speechstart', disableSpeechInput);
+        
+        // Periodically check for rapid input changes that might indicate dictation
+        const intervalCheck = setInterval(() => {
+          if (document.activeElement === textarea) {
+            const currentVal = textarea.value;
+            if (currentVal.length > writtenTranslation.length + 15) {
+              setWrittenTranslation(currentVal.substring(0, writtenTranslation.length));
+              setError('Please type your translation manually. Dictation is not allowed in practice mode.');
+              setTimeout(() => setError(''), 3000);
+            }
+          }
+        }, 500);
+        
+        // Clean up
+        return () => {
           textarea.removeEventListener('input', handleTextareaInput);
-        }
-      };
+          textarea.removeEventListener('webkitspeechstart', disableSpeechInput);
+          textarea.removeEventListener('speechstart', disableSpeechInput);
+          clearInterval(intervalCheck);
+        };
+      }
     }
   }, [step, writtenTranslation]);
   
@@ -416,7 +442,21 @@ function PracticePageInner() {
               <div className="space-y-4">
                 <textarea
                   value={writtenTranslation}
-                  onChange={(e) => setWrittenTranslation(e.target.value)}
+                  onChange={(e) => {
+                    // Limit the rate of text input to prevent dictation
+                    const newValue = e.target.value;
+                    const oldValue = writtenTranslation;
+                    
+                    // If too many characters are added at once, it might be dictation
+                    if (newValue.length > oldValue.length + 5) {
+                      setError('Please type your translation manually. Dictation is not allowed in practice mode.');
+                      setTimeout(() => setError(''), 3000);
+                      // Only accept a reasonable number of new characters
+                      setWrittenTranslation(newValue.substring(0, oldValue.length + 5));
+                    } else {
+                      setWrittenTranslation(newValue);
+                    }
+                  }}
                   className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/50 transition-colors duration-200 dictation-disabled"
                   rows={4}
                   placeholder="Type your translation here..."
@@ -432,6 +472,14 @@ function PracticePageInner() {
                   onContextMenu={(e: React.MouseEvent<HTMLTextAreaElement>) => {
                     // Prevent context menu which might have speech options
                     e.preventDefault();
+                  }}
+                  onKeyDown={(e) => {
+                    // Detect keyboard shortcuts that might trigger dictation
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                      e.preventDefault();
+                      setError('Keyboard shortcuts for dictation are disabled in practice mode.');
+                      setTimeout(() => setError(''), 3000);
+                    }
                   }}
                 ></textarea>
                 
@@ -621,6 +669,13 @@ function PracticePageInner() {
             SpellBuddy Practice 🧙‍♂️
           </h1>
         </div>
+        
+        {step === PracticeStep.WriteTranslation && (
+          <div className="bg-yellow-500/20 text-yellow-300 p-3 sm:p-4 rounded-xl mb-5 sm:mb-6 border border-yellow-500/20">
+            <p className="font-medium">⚠️ Important: Please type your translation manually.</p>
+            <p className="text-sm mt-1 opacity-80">Using dictation or speech-to-text is not allowed in practice mode as it defeats the purpose of spelling practice.</p>
+          </div>
+        )}
         
         {error && step !== PracticeStep.PracticeWords && (
           <div className="bg-red-500/20 text-red-300 p-3 sm:p-4 rounded-xl mb-5 sm:mb-6 border border-red-500/20">

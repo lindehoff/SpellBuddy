@@ -41,6 +41,12 @@ export default function NavBar() {
     setIsUserMenuOpen(!isUserMenuOpen);
   };
   
+  // Close menus when route changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+    setIsUserMenuOpen(false);
+  }, [pathname]);
+  
   // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -219,6 +225,11 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
           ? 'bg-white/10 text-cyan-300 border-b-2 border-cyan-400' 
           : 'hover:bg-white/10 hover:text-cyan-300'
       }`}
+      onClick={() => {
+        // Close any open menus when clicking a navigation link
+        const event = new Event('click');
+        document.dispatchEvent(event);
+      }}
     >
       {children}
     </Link>
