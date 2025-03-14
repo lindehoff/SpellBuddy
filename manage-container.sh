@@ -11,6 +11,7 @@ DATA_DIR="/volume1/docker/spellbuddy/data"
 ENV_FILE="/volume1/docker/spellbuddy/.env.local"
 DEBUG_MODE="false"
 ACTION="start"  # Default action: start the container
+OPTIMIZE_FLAGS=""
 
 # Print usage information
 function print_usage {
@@ -25,6 +26,7 @@ function print_usage {
   echo "  rebuild     Rebuild and restart the container"
   echo "  upgrade     Pull the latest image and restart the container"
   echo "  logs        Show container logs"
+  echo "  optimize    Build an optimized Docker image"
   echo ""
   echo "Options:"
   echo "  --container-name NAME   Container name (default: spellbuddy)"
@@ -33,6 +35,7 @@ function print_usage {
   echo "  --data-dir DIR          Host directory to mount as /app/data (default: /volume1/docker/spellbuddy/data)"
   echo "  --env-file FILE         Environment file to mount (default: /volume1/docker/spellbuddy/.env.local)"
   echo "  --debug                 Enable debug mode with additional logging"
+  echo "  --optimize-flags FLAGS  Additional flags to pass to optimize-docker-build.sh"
   echo "  --help                  Show this help message"
   echo ""
   echo "Examples:"
@@ -40,10 +43,11 @@ function print_usage {
   echo "  $0 rebuild --debug      Rebuild and start the container with debug mode enabled"
   echo "  $0 upgrade              Pull the latest image and restart the container"
   echo "  $0 logs                 Show container logs"
+  echo "  $0 optimize --optimize-flags \"--no-cache --benchmark\""
 }
 
 # Parse action (first argument)
-if [[ $1 == "start" || $1 == "stop" || $1 == "restart" || $1 == "rebuild" || $1 == "upgrade" || $1 == "logs" ]]; then
+if [[ $1 == "start" || $1 == "stop" || $1 == "restart" || $1 == "rebuild" || $1 == "upgrade" || $1 == "logs" || $1 == "optimize" ]]; then
   ACTION="$1"
   shift
 fi
@@ -74,6 +78,10 @@ while [[ $# -gt 0 ]]; do
     --debug)
       DEBUG_MODE="true"
       shift
+      ;;
+    --optimize-flags)
+      OPTIMIZE_FLAGS="$2"
+      shift 2
       ;;
     --help)
       print_usage
@@ -175,6 +183,23 @@ function build_image {
   docker build -t "$IMAGE_NAME" .
 }
 
+# Function to build an optimized Docker image
+function optimize_image {
+  echo "Building optimized Docker image: $IMAGE_NAME"
+  
+  # Check if optimize-docker-build.sh exists
+  if [ ! -f "./optimize-docker-build.sh" ]; then
+    echo "Error: optimize-docker-build.sh not found. Please make sure it exists in the current directory."
+    exit 1
+  fi
+  
+  # Make sure it's executable
+  chmod +x ./optimize-docker-build.sh
+  
+  # Run the optimization script
+  ./optimize-docker-build.sh --image-name "$IMAGE_NAME" $OPTIMIZE_FLAGS
+}
+
 # Function to pull the latest Docker image
 function pull_image {
   echo "Pulling latest Docker image: $IMAGE_NAME"
@@ -206,6 +231,12 @@ case "$ACTION" in
     show_logs
     ;;
   logs)
+    show_logs
+    ;;
+  optimize)
+    stop_container
+    optimize_image
+    start_container
     show_logs
     ;;
   *)
