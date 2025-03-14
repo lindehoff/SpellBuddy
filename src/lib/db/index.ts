@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import * as schema from './schema';
 import * as fs from 'fs';
 import * as path from 'path';
+import { DrizzleDB } from './types';
 
 // Define database path - use data directory in production
 const dbPath = process.env.NODE_ENV === 'production' 
@@ -10,7 +11,7 @@ const dbPath = process.env.NODE_ENV === 'production'
   : 'sqlite.db';
 
 // Initialize SQLite database
-let db;
+let db: DrizzleDB;
 try {
   // Try to open the database file
   const sqlite = new Database(dbPath, { verbose: console.log });
@@ -18,7 +19,7 @@ try {
   // Test if we can write to the database
   sqlite.exec('PRAGMA journal_mode = WAL;');
   
-  db = drizzle(sqlite, { schema });
+  db = drizzle(sqlite, { schema }) as DrizzleDB;
   console.log(`Successfully connected to database at ${dbPath}`);
 } catch (error) {
   console.error(`Error initializing database at ${dbPath}:`, error);
@@ -26,7 +27,7 @@ try {
   console.warn('Falling back to in-memory database. Data will not be persisted!');
   try {
     const sqlite = new Database(':memory:');
-    db = drizzle(sqlite, { schema });
+    db = drizzle(sqlite, { schema }) as DrizzleDB;
     
     // Create tables in memory
     console.log('Creating tables in memory database...');
