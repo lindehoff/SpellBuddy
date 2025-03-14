@@ -13,13 +13,13 @@ chmod -R 755 /app/drizzle
 # Initialize database if it does not exist
 if [ ! -s "/app/data/sqlite.db" ]; then
   echo "Database does not exist or is empty. Initializing..."
-  npm run db:generate
+  npm run db:generate || echo "Schema generation failed, but continuing startup"
   sleep 2
-  npm run db:migrate
+  npm run db:migrate || echo "Migration failed, but continuing startup"
 else
   # Check if we need to run migrations
   echo "Checking for pending migrations..."
-  npm run db:migrate
+  npm run db:migrate || echo "Migration failed, but continuing startup"
 fi
 
 # Start the application
