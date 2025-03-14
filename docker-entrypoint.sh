@@ -215,6 +215,29 @@ echo "DATABASE_URL=$DATABASE_URL"
 echo "OPENAI_API_KEY is $(if [ -z "$OPENAI_API_KEY" ]; then echo "NOT "; fi)set"
 echo "JWT_SECRET is $(if [ -z "$JWT_SECRET" ]; then echo "NOT "; fi)set"
 
+# Set additional environment variables for Next.js
+export NEXT_TELEMETRY_DISABLED=1
+export NEXT_SHARP_PATH=/app/node_modules/sharp
+export NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+
+# Ensure proper permissions for static assets
+if [ -d ".next/static" ]; then
+  echo "Setting proper permissions for static assets..."
+  chmod -R 755 .next/static
+fi
+
+# Ensure public directory exists and has proper permissions
+if [ -d "public" ]; then
+  echo "Setting proper permissions for public directory..."
+  chmod -R 755 public
+  echo "Contents of public directory:"
+  ls -la public
+else
+  echo "Warning: public directory not found"
+  mkdir -p public
+  chmod 755 public
+fi
+
 # Verify Next.js installation
 echo "Verifying Next.js installation..."
 if [ -d "node_modules/next" ]; then
@@ -244,6 +267,10 @@ if [ -d ".next" ]; then
   echo "Contents of .next directory:"
   ls -la .next
   
+  # Check for CSS files in the build
+  echo "Checking for CSS files in the build..."
+  find .next -name "*.css" || echo "No CSS files found in the build"
+  
   # Check if we have the main app files
   if [ -d ".next/server/app" ] && [ -d ".next/static" ]; then
     echo "Next.js build files appear to be present"
@@ -252,7 +279,8 @@ if [ -d ".next" ]; then
     if [ -f "node_modules/next/dist/bin/next" ]; then
       echo "Starting Next.js application using next start..."
       # Use exec to replace the current process with Next.js
-      exec node node_modules/next/dist/bin/next start -p 3000
+      # Add the --hostname 0.0.0.0 flag to ensure it listens on all interfaces
+      exec node node_modules/next/dist/bin/next start --hostname 0.0.0.0 -p 3000
     else
       echo "Looking for next binary..."
       find ./node_modules -name "next" -type f | grep -v "package.json" || echo "Next binary not found"
@@ -266,7 +294,7 @@ if [ -d ".next" ]; then
       fi
       
       echo "Starting Next.js application using npx next start..."
-      exec npx next start -p 3000
+      exec npx next start --hostname 0.0.0.0 -p 3000
     fi
   else
     echo "ERROR: Next.js build files incomplete. Missing key directories."
@@ -276,9 +304,9 @@ if [ -d ".next" ]; then
     # Try to start anyway as a last resort
     echo "Attempting to start Next.js anyway as a last resort..."
     if [ -f "node_modules/next/dist/bin/next" ]; then
-      exec node node_modules/next/dist/bin/next start -p 3000
+      exec node node_modules/next/dist/bin/next start --hostname 0.0.0.0 -p 3000
     else
-      exec npx next start -p 3000
+      exec npx next start --hostname 0.0.0.0 -p 3000
     fi
   fi
 else
@@ -290,9 +318,9 @@ else
   echo "Attempting to build Next.js on the fly..."
   if [ -f "node_modules/next/dist/bin/next" ]; then
     node node_modules/next/dist/bin/next build
-    exec node node_modules/next/dist/bin/next start -p 3000
+    exec node node_modules/next/dist/bin/next start --hostname 0.0.0.0 -p 3000
   else
     npx next build
-    exec npx next start -p 3000
+    exec npx next start --hostname 0.0.0.0 -p 3000
   fi
 fi 
