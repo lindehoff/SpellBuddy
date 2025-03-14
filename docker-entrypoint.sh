@@ -43,7 +43,8 @@ if [ -n "$DATABASE_URL" ]; then
   echo "Using DATABASE_URL: $DATABASE_URL"
 fi
 
-# Ensure proper permissions for data directory
+# Ensure data directory exists with proper permissions
+mkdir -p /app/data
 chmod -R 755 /app/data
 touch /app/data/sqlite.db
 chmod 666 /app/data/sqlite.db
@@ -79,6 +80,19 @@ if [ ! -f "/app/node_modules/src/meta/_journal.json" ]; then
   echo "Created journal file at /app/node_modules/src/meta/_journal.json"
 fi
 
+# Location 4: /app/src/meta/_journal.json (another possible location)
+mkdir -p /app/src/meta
+if [ ! -f "/app/src/meta/_journal.json" ]; then
+  echo "$JOURNAL_CONTENT" > /app/src/meta/_journal.json
+  chmod 644 /app/src/meta/_journal.json
+  echo "Created journal file at /app/src/meta/_journal.json"
+fi
+
+# Create symbolic links to ensure all possible paths can find the journal file
+ln -sf /app/meta/_journal.json /app/drizzle/meta/_journal.json 2>/dev/null || true
+ln -sf /app/meta/_journal.json /app/src/meta/_journal.json 2>/dev/null || true
+ln -sf /app/meta/_journal.json /app/node_modules/src/meta/_journal.json 2>/dev/null || true
+
 # Initialize database if it does not exist
 if [ ! -s "/app/data/sqlite.db" ]; then
   echo "Database does not exist or is empty. Initializing..."
@@ -113,13 +127,23 @@ echo "DATABASE_URL=$DATABASE_URL"
 echo "OPENAI_API_KEY is $(if [ -z "$OPENAI_API_KEY" ]; then echo "NOT "; fi)set"
 echo "JWT_SECRET is $(if [ -z "$JWT_SECRET" ]; then echo "NOT "; fi)set"
 
-# Check if Next.js build files exist
-if [ ! -f ".next/server/app/server.js" ]; then
-  echo "ERROR: Next.js build files not found. Make sure the application was built correctly."
-  echo "Try rebuilding the Docker image with 'npm run build' completing successfully."
+# Check if Next.js build files exist in any of the possible locations
+if [ -f ".next/server/app/server.js" ]; then
+  echo "Found Next.js build files at .next/server/app/server.js"
+  NEXT_SERVER_FILE=".next/server/app/server.js"
+elif [ -f ".next/server/pages/app.js" ]; then
+  echo "Found Next.js build files at .next/server/pages/app.js"
+  NEXT_SERVER_FILE=".next/server/pages/app.js"
+elif [ -f ".next/server/index.js" ]; then
+  echo "Found Next.js build files at .next/server/index.js"
+  NEXT_SERVER_FILE=".next/server/index.js"
+else
+  # List available files to help diagnose the issue
+  echo "ERROR: Next.js build files not found. Checking available files:"
+  find .next -type f -name "*.js" | grep -E 'server|index|app' || echo "No matching files found"
   exit 1
 fi
 
 # Start the application using node directly instead of npm
 echo "Starting Next.js application..."
-exec node .next/server/app/server.js 
+exec node $NEXT_SERVER_FILE 
