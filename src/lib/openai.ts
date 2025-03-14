@@ -6,10 +6,12 @@ if (!process.env.OPENAI_API_KEY) {
   console.warn('Missing OPENAI_API_KEY environment variable');
 } else {
   console.log('OpenAI API key is configured:', process.env.OPENAI_API_KEY.substring(0, 10) + '...');
+  console.log('OpenAI API key length:', process.env.OPENAI_API_KEY.length);
 }
 
 // Determine if we're in a build/SSR context
 const isBuildOrSSR = typeof window === 'undefined' && process.env.NODE_ENV === 'production';
+console.log('Build/SSR context:', isBuildOrSSR);
 
 // Create OpenAI API client with conditional initialization
 export const openai = new OpenAI({
@@ -34,11 +36,19 @@ export async function evaluateSpelling(
 ) {
   // Return mock data during build to prevent API calls
   if (isBuildOrSSR) {
+    console.log('In build/SSR context, returning mock data for evaluateSpelling');
     return { misspelledWords: [], encouragement: "Great job!", overallScore: 10 };
   }
 
   try {
     console.log('Evaluating spelling with OpenAI...');
+    console.log('Input - Original:', original);
+    console.log('Input - User Answer:', userAnswer);
+    console.log('Input - Expected Translation:', translatedText);
+    
+    console.log('Making API call to OpenAI with model:', DEFAULT_MODEL);
+    const startTime = Date.now();
+    
     const response = await openai.chat.completions.create({
       model: DEFAULT_MODEL,
       messages: [
@@ -85,13 +95,60 @@ export async function evaluateSpelling(
       response_format: { type: 'json_object' },
       temperature: 0.7,
     });
-    console.log('OpenAI evaluation completed successfully');
+    
+    const endTime = Date.now();
+    console.log(`OpenAI evaluation completed in ${endTime - startTime}ms`);
+    console.log('Response ID:', response.id);
+    console.log('Response Model:', response.model);
+    console.log('Response Content:', response.choices[0].message.content);
+    
     return JSON.parse(response.choices[0].message.content || '{}');
   } catch (error) {
     console.error('Error evaluating spelling with OpenAI:', error);
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // If it's an OpenAI API error, log more details
+      if ('status' in error) {
+        console.error('OpenAI API Error Status:', (error as any).status);
+        console.error('OpenAI API Error Type:', (error as any).type);
+        console.error('OpenAI API Error Message:', (error as any).message);
+      }
+    }
     return { misspelledWords: [], encouragement: "Error evaluating spelling", overallScore: 0 };
   }
 }
+
+// Fallback exercises to use when OpenAI is not available or fails
+const fallbackExercises = [
+  {
+    original: "Hej, hur mår du idag?",
+    translation: "Hello, how are you today?",
+    difficulty: 1
+  },
+  {
+    original: "Jag tycker om att läsa böcker.",
+    translation: "I like to read books.",
+    difficulty: 2
+  },
+  {
+    original: "Vädret är vackert idag.",
+    translation: "The weather is beautiful today.",
+    difficulty: 2
+  },
+  {
+    original: "Min favorit färg är blå.",
+    translation: "My favorite color is blue.",
+    difficulty: 3
+  },
+  {
+    original: "Jag ska resa till Sverige nästa sommar.",
+    translation: "I will travel to Sweden next summer.",
+    difficulty: 4
+  }
+];
 
 /**
  * Generate a new practice exercise based on user's history and preferences
@@ -107,16 +164,17 @@ export async function generateExercise(
   difficulty: number = 1,
   masteredWords: string[] = []
 ) {
-  // Return mock data during build to prevent API calls
+  // Return random fallback data during build to prevent API calls
   if (isBuildOrSSR) {
-    return {
-      original: "Hej, hur mår du idag?",
-      translation: "Hello, how are you today?",
-      difficulty: 1
-    };
+    console.log('In build/SSR context, returning fallback exercise');
+    const randomIndex = Math.floor(Math.random() * fallbackExercises.length);
+    return fallbackExercises[randomIndex];
   }
 
   try {
+    console.log('Generating exercise with OpenAI...');
+    console.log(`Difficulty: ${difficulty}, Words to include: ${difficultWords.length > 0 ? difficultWords.join(', ') : 'none'}`);
+    
     // Create context for difficult words to include
     const wordContext = difficultWords.length > 0 
       ? `Try to include some of these words the student has struggled with: ${difficultWords.join(', ')}.` 
@@ -157,6 +215,16 @@ export async function generateExercise(
       difficultyDescription = 'very challenging, with advanced vocabulary and complex sentences';
     }
 
+    // Add a timestamp to ensure uniqueness in each request
+    const timestamp = new Date().toISOString();
+    
+    console.log('Making API call to OpenAI for exercise generation');
+    console.log('Using model:', DEFAULT_MODEL);
+    console.log('Personalization context:', personalizationContext || 'None');
+    console.log('Difficulty description:', difficultyDescription);
+    
+    const startTime = Date.now();
+
     const response = await openai.chat.completions.create({
       model: DEFAULT_MODEL,
       messages: [
@@ -175,6 +243,8 @@ export async function generateExercise(
           - Include unexpected and creative scenarios, everyday situations, or interesting facts
           - Rotate between different themes: nature, science, history, daily life, fantasy, technology, etc.
           - Avoid repetitive patterns in content or structure
+          - NEVER repeat the same exercise twice
+          - Current timestamp: ${timestamp} - use this to ensure uniqueness
           
           ${personalizationContext}
           
@@ -191,15 +261,36 @@ export async function generateExercise(
       response_format: { type: 'json_object' },
       temperature: 0.9,
     });
-
-    return JSON.parse(response.choices[0].message.content || '{}');
+    
+    const endTime = Date.now();
+    console.log(`OpenAI exercise generation completed in ${endTime - startTime}ms`);
+    console.log('Response ID:', response.id);
+    console.log('Response Model:', response.model);
+    console.log('Response Content:', response.choices[0].message.content);
+    
+    const parsedResponse = JSON.parse(response.choices[0].message.content || '{}');
+    console.log('Parsed Response:', parsedResponse);
+    
+    return parsedResponse;
   } catch (error) {
-    console.error('Error generating exercise:', error);
-    return {
-      original: "Ett fel uppstod när övningen skulle genereras.",
-      translation: "An error occurred while generating the exercise.",
-      difficulty: 1
-    };
+    console.error('Error generating exercise with OpenAI:', error);
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // If it's an OpenAI API error, log more details
+      if ('status' in error) {
+        console.error('OpenAI API Error Status:', (error as any).status);
+        console.error('OpenAI API Error Type:', (error as any).type);
+        console.error('OpenAI API Error Message:', (error as any).message);
+      }
+    }
+    
+    console.log('Falling back to predefined exercise due to OpenAI error');
+    // Return a random fallback exercise if OpenAI fails
+    const randomIndex = Math.floor(Math.random() * fallbackExercises.length);
+    return fallbackExercises[randomIndex];
   }
 }
 
@@ -221,6 +312,7 @@ export async function getProgressReport(
 ) {
   // Return mock data during build to prevent API calls
   if (isBuildOrSSR) {
+    console.log('In build/SSR context, returning mock progress report');
     return {
       summary: "You're making great progress!",
       strengths: "You're doing well with your spelling.",
@@ -231,6 +323,10 @@ export async function getProgressReport(
   }
 
   try {
+    console.log('Generating progress report with OpenAI...');
+    console.log(`Exercises: ${exerciseCount}, Correct: ${correctWordCount}, Incorrect: ${incorrectWordCount}`);
+    console.log(`Difficult words: ${difficultWords.join(', ')}`);
+    
     // Build personalization context based on user preferences
     let personalizationContext = '';
     if (preferences) {
@@ -264,6 +360,12 @@ export async function getProgressReport(
         personalizationContext += `Current difficulty level: ${preferences.difficultyLevel}. `;
       }
     }
+    
+    console.log('Making API call to OpenAI for progress report');
+    console.log('Using model:', DEFAULT_MODEL);
+    console.log('Personalization context:', personalizationContext || 'None');
+    
+    const startTime = Date.now();
 
     const response = await openai.chat.completions.create({
       model: DEFAULT_MODEL,
@@ -294,10 +396,29 @@ export async function getProgressReport(
       response_format: { type: 'json_object' },
       temperature: 0.7,
     });
+    
+    const endTime = Date.now();
+    console.log(`OpenAI progress report generation completed in ${endTime - startTime}ms`);
+    console.log('Response ID:', response.id);
+    console.log('Response Model:', response.model);
+    console.log('Response Content:', response.choices[0].message.content);
 
     return JSON.parse(response.choices[0].message.content || '{}');
   } catch (error) {
-    console.error('Error generating progress report:', error);
+    console.error('Error generating progress report with OpenAI:', error);
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // If it's an OpenAI API error, log more details
+      if ('status' in error) {
+        console.error('OpenAI API Error Status:', (error as any).status);
+        console.error('OpenAI API Error Type:', (error as any).type);
+        console.error('OpenAI API Error Message:', (error as any).message);
+      }
+    }
+    
     return {
       summary: "Error generating progress report",
       strengths: "Unable to analyze strengths at this time",

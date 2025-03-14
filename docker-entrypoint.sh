@@ -10,14 +10,25 @@ echo "Database path: /app/data/sqlite.db"
 if [ -z "$OPENAI_API_KEY" ]; then
   echo "WARNING: OPENAI_API_KEY is not set. The application may not function correctly."
 else
-  echo "OpenAI API key is configured."
+  # Print first 10 characters and length of the API key
+  OPENAI_KEY_LENGTH=${#OPENAI_API_KEY}
+  OPENAI_KEY_PREFIX=$(echo "$OPENAI_API_KEY" | cut -c 1-10)
+  echo "OpenAI API key is configured. Prefix: $OPENAI_KEY_PREFIX... Length: $OPENAI_KEY_LENGTH"
+  
+  # Check if the API key starts with the expected prefix
+  if [[ "$OPENAI_API_KEY" == sk-* ]]; then
+    echo "OpenAI API key has the expected 'sk-' prefix."
+  else
+    echo "WARNING: OpenAI API key does not start with 'sk-'. This might cause issues."
+  fi
 fi
 
 # Check if JWT_SECRET is set
 if [ -z "$JWT_SECRET" ]; then
   echo "WARNING: JWT_SECRET is not set. Authentication may not work correctly."
 else
-  echo "JWT_SECRET is configured."
+  JWT_SECRET_LENGTH=${#JWT_SECRET}
+  echo "JWT_SECRET is configured. Length: $JWT_SECRET_LENGTH"
 fi
 
 # Check if OPENAI_MODEL is set
@@ -41,11 +52,31 @@ chmod 666 /app/data/sqlite.db
 mkdir -p /app/drizzle/migrations /app/drizzle/meta
 chmod -R 755 /app/drizzle
 
-# Create empty journal file if it doesn't exist
+# Create empty journal file in all possible locations
+echo "Creating empty journal files..."
+JOURNAL_CONTENT='{"version":"5","entries":[]}'
+
+# Location 1: /app/drizzle/meta/_journal.json (our original location)
 if [ ! -f "/app/drizzle/meta/_journal.json" ]; then
-  echo "Creating empty journal file..."
-  echo '{"version":"5","entries":[]}' > /app/drizzle/meta/_journal.json
+  echo "$JOURNAL_CONTENT" > /app/drizzle/meta/_journal.json
   chmod 644 /app/drizzle/meta/_journal.json
+  echo "Created journal file at /app/drizzle/meta/_journal.json"
+fi
+
+# Location 2: /app/meta/_journal.json (possible alternate location)
+mkdir -p /app/meta
+if [ ! -f "/app/meta/_journal.json" ]; then
+  echo "$JOURNAL_CONTENT" > /app/meta/_journal.json
+  chmod 644 /app/meta/_journal.json
+  echo "Created journal file at /app/meta/_journal.json"
+fi
+
+# Location 3: /app/node_modules/src/meta/_journal.json (another possible location)
+mkdir -p /app/node_modules/src/meta
+if [ ! -f "/app/node_modules/src/meta/_journal.json" ]; then
+  echo "$JOURNAL_CONTENT" > /app/node_modules/src/meta/_journal.json
+  chmod 644 /app/node_modules/src/meta/_journal.json
+  echo "Created journal file at /app/node_modules/src/meta/_journal.json"
 fi
 
 # Initialize database if it does not exist
@@ -59,6 +90,14 @@ else
   echo "Checking for pending migrations..."
   npm run db:migrate || echo "Migration failed, but continuing startup"
 fi
+
+# Print environment variables that will be available to the application
+echo "Environment variables for the application:"
+echo "NODE_ENV=$NODE_ENV"
+echo "OPENAI_MODEL=$OPENAI_MODEL"
+echo "DATABASE_URL=$DATABASE_URL"
+echo "OPENAI_API_KEY is $(if [ -z "$OPENAI_API_KEY" ]; then echo "NOT "; fi)set"
+echo "JWT_SECRET is $(if [ -z "$JWT_SECRET" ]; then echo "NOT "; fi)set"
 
 # Start the application
 echo "Starting Next.js application..."
