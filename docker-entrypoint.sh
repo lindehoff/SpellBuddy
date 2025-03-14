@@ -82,14 +82,27 @@ fi
 # Initialize database if it does not exist
 if [ ! -s "/app/data/sqlite.db" ]; then
   echo "Database does not exist or is empty. Initializing..."
-  # Use node directly instead of npm run
-  node -r @swc-node/register src/lib/db/schema-generator.ts || echo "Schema generation failed, but continuing startup"
-  sleep 2
-  node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+  # Try to use @swc-node/register, fall back to direct node if not available
+  if node -e "require.resolve('@swc-node/register')" 2>/dev/null; then
+    node -r @swc-node/register src/lib/db/schema-generator.ts || echo "Schema generation failed, but continuing startup"
+    sleep 2
+    node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+  else
+    echo "Warning: @swc-node/register not found, trying direct execution"
+    node src/lib/db/schema-generator.ts || echo "Schema generation failed, but continuing startup"
+    sleep 2
+    node src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+  fi
 else
   # Check if we need to run migrations
   echo "Checking for pending migrations..."
-  node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+  # Try to use @swc-node/register, fall back to direct node if not available
+  if node -e "require.resolve('@swc-node/register')" 2>/dev/null; then
+    node -r @swc-node/register src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+  else
+    echo "Warning: @swc-node/register not found, trying direct execution"
+    node src/lib/db/migrate.ts || echo "Migration failed, but continuing startup"
+  fi
 fi
 
 # Print environment variables that will be available to the application
@@ -99,6 +112,13 @@ echo "OPENAI_MODEL=$OPENAI_MODEL"
 echo "DATABASE_URL=$DATABASE_URL"
 echo "OPENAI_API_KEY is $(if [ -z "$OPENAI_API_KEY" ]; then echo "NOT "; fi)set"
 echo "JWT_SECRET is $(if [ -z "$JWT_SECRET" ]; then echo "NOT "; fi)set"
+
+# Check if Next.js build files exist
+if [ ! -f ".next/server/app/server.js" ]; then
+  echo "ERROR: Next.js build files not found. Make sure the application was built correctly."
+  echo "Try rebuilding the Docker image with 'npm run build' completing successfully."
+  exit 1
+fi
 
 # Start the application using node directly instead of npm
 echo "Starting Next.js application..."

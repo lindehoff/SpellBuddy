@@ -1,17 +1,17 @@
 # Build dependencies stage
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 
 WORKDIR /app
 
 # Copy only package files for dependency installation
 COPY package*.json ./
 
-# Install dependencies with clean cache and production only
-RUN npm ci --only=production && \
+# Install dependencies with clean cache and include necessary dev dependencies
+RUN npm ci && \
     npm cache clean --force
 
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
