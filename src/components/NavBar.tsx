@@ -50,8 +50,23 @@ export default function NavBar() {
       }
     };
     
+    // Close menu on any click when it's open
+    const handleAnyClick = () => {
+      if (isUserMenuOpen) {
+        // Small delay to allow the click event to register on menu items first
+        setTimeout(() => {
+          setIsUserMenuOpen(false);
+        }, 50);
+      }
+    };
+    
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleAnyClick);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleAnyClick);
+    };
   }, [isUserMenuOpen]);
   
   return (

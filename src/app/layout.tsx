@@ -40,7 +40,7 @@ export default function RootLayout({
               
               <NavBar />
               
-              <main className="pt-16 min-h-screen">
+              <main className="pt-20 min-h-screen">
                 {children}
               </main>
               

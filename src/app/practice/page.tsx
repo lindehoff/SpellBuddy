@@ -46,6 +46,55 @@ function PracticePageInner() {
   const [error, setError] = useState('');
   const [isLoadingExercise, setIsLoadingExercise] = useState(true);
   const [currentWordAttempts, setCurrentWordAttempts] = useState(0);
+  const [dictationEnabled, setDictationEnabled] = useState(() => {
+    // Initialize from localStorage if available, default to true
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dictationEnabled');
+      return saved !== null ? saved === 'true' : true;
+    }
+    return true;
+  });
+  
+  // Save dictation preference to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dictationEnabled', dictationEnabled.toString());
+    }
+  }, [dictationEnabled]);
+  
+  // Detect and prevent dictation in the textarea
+  useEffect(() => {
+    if (step === PracticeStep.WriteTranslation) {
+      // Function to detect rapid text input that might be from dictation
+      const handleTextareaInput = (e: Event) => {
+        const target = e.target as HTMLTextAreaElement;
+        const currentLength = target.value.length;
+        const previousLength = writtenTranslation.length;
+        
+        // If a large amount of text is added at once, it might be dictation
+        if (currentLength - previousLength > 15) {
+          // Show a warning
+          setError('Please type your translation manually. Dictation is not allowed in practice mode.');
+          
+          // Clear the error after 3 seconds
+          setTimeout(() => setError(''), 3000);
+        }
+      };
+      
+      // Add event listener to detect dictation
+      const textarea = document.querySelector('textarea');
+      if (textarea) {
+        textarea.addEventListener('input', handleTextareaInput);
+      }
+      
+      // Clean up
+      return () => {
+        if (textarea) {
+          textarea.removeEventListener('input', handleTextareaInput);
+        }
+      };
+    }
+  }, [step, writtenTranslation]);
   
   // Use our custom speech recognition hook
   const {
@@ -284,6 +333,21 @@ function PracticePageInner() {
               <p className="opacity-90 mb-3 sm:mb-4 font-medium">Original text:</p>
               <p className="mb-6 sm:mb-8 font-medium practice-mode-text">{exercise?.original}</p>
               
+              <div className="flex items-center justify-center mb-4">
+                <label className="flex items-center cursor-pointer">
+                  <span className="mr-2 text-sm">Dictation:</span>
+                  <div className={`relative inline-block w-10 h-5 transition duration-200 ease-in-out rounded-full ${dictationEnabled ? 'bg-green-500' : 'bg-gray-400'}`}>
+                    <input
+                      type="checkbox"
+                      className="absolute w-0 h-0 opacity-0"
+                      checked={dictationEnabled}
+                      onChange={() => setDictationEnabled(!dictationEnabled)}
+                    />
+                    <span className={`absolute left-0 top-0 w-5 h-5 transition duration-200 ease-in-out transform ${dictationEnabled ? 'translate-x-5' : 'translate-x-0'} bg-white rounded-full shadow-md`}></span>
+                  </div>
+                </label>
+              </div>
+              
               <div className="mb-5 sm:mb-6">
                 <p className="opacity-90 mb-2 font-medium">Your spoken translation:</p>
                 <p className="min-h-16 p-3 sm:p-4 bg-white/10 border border-white/20 rounded-lg">
@@ -301,11 +365,11 @@ function PracticePageInner() {
               <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
                 {!listening ? (
                   <button
-                    onClick={startListening}
-                    disabled={!browserSupportsSpeechRecognition}
+                    onClick={dictationEnabled ? startListening : () => setStep(PracticeStep.WriteTranslation)}
+                    disabled={!browserSupportsSpeechRecognition && dictationEnabled}
                     className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105 disabled:bg-green-800/30"
                   >
-                    🎤 Start Speaking
+                    {dictationEnabled ? '🎤 Start Speaking' : '⏭️ Skip to Writing'}
                   </button>
                 ) : (
                   <button
@@ -316,12 +380,14 @@ function PracticePageInner() {
                   </button>
                 )}
                 
-                <button
-                  onClick={resetTranscript}
-                  className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105"
-                >
-                  🔄 Reset
-                </button>
+                {dictationEnabled && (
+                  <button
+                    onClick={resetTranscript}
+                    className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105"
+                  >
+                    🔄 Reset
+                  </button>
+                )}
               </div>
               
               <div className="mt-5 sm:mt-6">
@@ -351,20 +417,26 @@ function PracticePageInner() {
                 <textarea
                   value={writtenTranslation}
                   onChange={(e) => setWrittenTranslation(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/50 transition-colors duration-200"
+                  className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/50 transition-colors duration-200 dictation-disabled"
                   rows={4}
                   placeholder="Type your translation here..."
                   autoComplete="off"
                   autoCorrect="off"
                   autoCapitalize="off"
-                  spellCheck="false"
+                  spellCheck={false}
                   data-gramm="false"
                   data-gramm_editor="false"
                   data-enable-grammarly="false"
+                  aria-autocomplete="none"
+                  inputMode="text"
+                  onContextMenu={(e: React.MouseEvent<HTMLTextAreaElement>) => {
+                    // Prevent context menu which might have speech options
+                    e.preventDefault();
+                  }}
                 ></textarea>
                 
                 <div className="text-xs opacity-70 italic">
-                  <p>Note: Autocorrect and spell-check are disabled to help you practice your spelling skills.</p>
+                  <p>Note: Autocorrect, spell-check, and dictation are disabled to help you practice your spelling skills.</p>
                 </div>
                 
                 <button

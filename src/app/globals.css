@@ -76,6 +76,15 @@ body {
   -ms-user-select: none;
 }
 
+/* Disable dictation in practice mode */
+.dictation-disabled {
+  -webkit-user-modify: read-only !important;
+  -moz-user-modify: read-only !important;
+  user-modify: read-only !important;
+  -webkit-speech-recognition: none !important;
+  speech-recognition: none !important;
+}
+
 /* Improve text rendering */
 * {
   -webkit-font-smoothing: antialiased;
