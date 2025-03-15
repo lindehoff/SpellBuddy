@@ -1,6 +1,6 @@
 import { db } from './db';
 import { users, achievements, userAchievements, progress, userChallenges } from './db/schema';
-import { eq, and, gt, count } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { Achievement } from '@/types';
 
 // Experience points required for each level (exponential growth)

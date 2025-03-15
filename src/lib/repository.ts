@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, not, gt } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { db, schema } from './db';
 import { UserPreferences } from './service';
 

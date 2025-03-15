@@ -1,7 +1,6 @@
 import * as repository from './repository';
 import * as ai from './openai';
 import * as gamification from './gamification';
-import { UserData } from './auth';
 
 // Types
 export type SpellingResult = {
@@ -187,8 +186,8 @@ export async function submitWrittenTranslation(
   // Update exercise with awarded XP
   await repository.updateExerciseExperience(exerciseId, totalXP);
   
-  // Update user's experience points and check for level up
-  const levelUpResult = await gamification.addExperiencePoints(exercise.userId, totalXP);
+  // Update user's experience points
+  await gamification.addExperiencePoints(exercise.userId, totalXP);
   
   // Update progress
   const progress = await repository.getProgressForUser(exercise.userId);

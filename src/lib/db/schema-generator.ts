@@ -1,7 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { db } from './index';
-import * as schema from './schema';
 
 /**
  * This script generates the SQL schema for the database

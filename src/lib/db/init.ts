@@ -1,4 +1,3 @@
-import { db } from './index';
 import { seedAchievements } from './seed/achievements';
 
 /**

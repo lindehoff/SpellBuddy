@@ -2,7 +2,6 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from './index';
 import * as fs from 'fs';
 import * as path from 'path';
-import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { DrizzleDB } from './types';
 import Database from 'better-sqlite3';
 import { initializeDatabase, checkAndUpdateDatabase } from './init';
