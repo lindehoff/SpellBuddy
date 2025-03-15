@@ -1,18 +1,31 @@
 # Setting Up GitHub Secrets for Semantic Release
 
-To enable automated releases with semantic-release, you need to set up the following GitHub repository secrets:
+To enable automated releases with semantic-release, you need to understand how GitHub tokens work with Actions:
 
-## Required Secrets
+## GitHub Tokens
 
-1. **GH_TOKEN**: A GitHub Personal Access Token (PAT) with the following permissions:
-   - `repo` (Full control of private repositories)
-   - `workflow` (Update GitHub Action workflows)
+### Default GITHUB_TOKEN
 
-2. **NPM_TOKEN**: An npm token if you're publishing to npm (optional for private repositories)
+By default, GitHub Actions provides a `GITHUB_TOKEN` secret that is automatically created for your repository. This token has the necessary permissions to:
 
-## Steps to Create and Add Secrets
+- Create releases
+- Push commits to the repository
+- Create tags
 
-### 1. Create a GitHub Personal Access Token (PAT)
+For most cases, you don't need to set up any additional secrets as the workflow has been configured to use this default token.
+
+### Limitations of the Default Token
+
+The default `GITHUB_TOKEN` has some limitations:
+
+- It cannot trigger other GitHub Actions workflows
+- It has limited permissions outside the current repository
+
+If you need to overcome these limitations, you can set up a Personal Access Token (PAT) as described below.
+
+## Optional: Setting Up a Personal Access Token (PAT)
+
+If you need more permissions than the default token provides, you can set up a Personal Access Token:
 
 1. Go to your GitHub account settings
 2. Click on "Developer settings" in the left sidebar
@@ -25,30 +38,33 @@ To enable automated releases with semantic-release, you need to set up the follo
 7. Click "Generate token"
 8. **IMPORTANT**: Copy the token immediately as you won't be able to see it again
 
-### 2. Add Secrets to Your GitHub Repository
+### Adding the PAT to Your Repository
 
 1. Go to your repository on GitHub
 2. Click on "Settings"
 3. Click on "Secrets and variables" in the left sidebar, then "Actions"
 4. Click "New repository secret"
-5. Add the following secrets:
+5. Add the following secret:
    - Name: `GH_TOKEN`
    - Value: [Your GitHub PAT from step 1]
    - Click "Add secret"
 
-6. If you're publishing to npm, also add:
-   - Name: `NPM_TOKEN`
-   - Value: [Your npm token]
-   - Click "Add secret"
+## NPM Token (Optional)
+
+If you're publishing to npm, you'll need to add an NPM token:
+
+1. Create an npm token with publish permissions
+2. Add it as a secret named `NPM_TOKEN` in your repository settings
 
 ## Verifying Setup
 
-After setting up the secrets, push a commit to the `main` branch to trigger the release workflow. You can check the workflow execution in the "Actions" tab of your repository.
+After setting up the secrets (or relying on the default token), push a commit to the `main` branch to trigger the release workflow. You can check the workflow execution in the "Actions" tab of your repository.
 
 ## Troubleshooting
 
 If the release workflow fails, check the following:
 
-1. Ensure your PAT has the correct permissions
-2. Verify that the secrets are correctly named in the repository settings
-3. Check the workflow logs for specific error messages 
+1. Ensure the workflow has the correct configuration for authentication
+2. Check if your repository has any branch protection rules that might interfere
+3. Verify that the secrets are correctly named in the repository settings
+4. Check the workflow logs for specific error messages 

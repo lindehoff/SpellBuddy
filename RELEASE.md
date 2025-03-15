@@ -24,17 +24,17 @@ SpellBuddy uses [semantic-release](https://github.com/semantic-release/semantic-
 5. A new GitHub release is created.
 6. The package.json version is updated.
 
-## Prerequisites
+## Authentication
 
-To enable automated releases, you need to set up the following GitHub repository secrets:
+The release process uses GitHub's default `GITHUB_TOKEN` that is automatically provided to GitHub Actions workflows. This token has the necessary permissions to:
 
-1. **GH_TOKEN**: A GitHub Personal Access Token (PAT) with the following permissions:
-   - `repo` (Full control of private repositories)
-   - `workflow` (Update GitHub Action workflows)
+- Create releases
+- Push commits to the repository
+- Create tags
 
-2. **NPM_TOKEN**: An npm token if you're publishing to npm (optional for private repositories)
+For most cases, no additional setup is required as the workflow has been configured to use this default token.
 
-See [setup-github-secrets.md](setup-github-secrets.md) for detailed instructions on setting up these secrets.
+If you need more permissions (such as triggering other workflows), you can set up a Personal Access Token (PAT) as described in [setup-github-secrets.md](setup-github-secrets.md).
 
 ## Conventional Commits
 
@@ -66,7 +66,8 @@ npm run semantic-release
 
 If the release workflow fails, check the following:
 
-1. Ensure your PAT has the correct permissions
-2. Verify that the secrets are correctly named in the repository settings
-3. Check the workflow logs for specific error messages
-4. Ensure your commit messages follow the Conventional Commits format 
+1. Ensure the workflow has the correct configuration for authentication
+2. Check if your repository has any branch protection rules that might interfere
+3. Verify that the secrets are correctly named in the repository settings
+4. Check the workflow logs for specific error messages
+5. Ensure your commit messages follow the Conventional Commits format 
