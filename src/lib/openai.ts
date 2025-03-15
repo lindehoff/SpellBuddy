@@ -27,6 +27,12 @@ export const openai = new OpenAI({
 export const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 console.log('Using OpenAI model:', DEFAULT_MODEL);
 
+interface OpenAIError {
+  status?: number
+  type?: string
+  message: string
+}
+
 /**
  * Get an evaluation of spelling from the OpenAI API
  * @param original Swedish text for context
@@ -118,18 +124,15 @@ export async function evaluateSpelling(
     
     return JSON.parse(response.choices[0].message.content || '{}');
   } catch (error) {
+    const apiError = error as OpenAIError;
+    console.error('OpenAI API Error Status:', apiError.status);
+    console.error('OpenAI API Error Type:', apiError.type);
+    console.error('OpenAI API Error Message:', apiError.message);
     console.error('Error evaluating spelling with OpenAI:', error);
     if (error instanceof Error) {
       console.error('Error name:', error.name);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
-      
-      // If it's an OpenAI API error, log more details
-      if ('status' in error) {
-        console.error('OpenAI API Error Status:', (error as any).status);
-        console.error('OpenAI API Error Type:', (error as any).type);
-        console.error('OpenAI API Error Message:', (error as any).message);
-      }
     }
     return { misspelledWords: [], encouragement: "Error evaluating spelling", overallScore: 0 };
   }
@@ -287,18 +290,15 @@ export async function generateExercise(
     
     return parsedResponse;
   } catch (error) {
+    const apiError = error as OpenAIError;
+    console.error('OpenAI API Error Status:', apiError.status);
+    console.error('OpenAI API Error Type:', apiError.type);
+    console.error('OpenAI API Error Message:', apiError.message);
     console.error('Error generating exercise with OpenAI:', error);
     if (error instanceof Error) {
       console.error('Error name:', error.name);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
-      
-      // If it's an OpenAI API error, log more details
-      if ('status' in error) {
-        console.error('OpenAI API Error Status:', (error as any).status);
-        console.error('OpenAI API Error Type:', (error as any).type);
-        console.error('OpenAI API Error Message:', (error as any).message);
-      }
     }
     
     console.log('Falling back to predefined exercise due to OpenAI error');
@@ -419,18 +419,15 @@ export async function getProgressReport(
 
     return JSON.parse(response.choices[0].message.content || '{}');
   } catch (error) {
+    const apiError = error as OpenAIError;
+    console.error('OpenAI API Error Status:', apiError.status);
+    console.error('OpenAI API Error Type:', apiError.type);
+    console.error('OpenAI API Error Message:', apiError.message);
     console.error('Error generating progress report with OpenAI:', error);
     if (error instanceof Error) {
       console.error('Error name:', error.name);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
-      
-      // If it's an OpenAI API error, log more details
-      if ('status' in error) {
-        console.error('OpenAI API Error Status:', (error as any).status);
-        console.error('OpenAI API Error Type:', (error as any).type);
-        console.error('OpenAI API Error Message:', (error as any).message);
-      }
     }
     
     return {

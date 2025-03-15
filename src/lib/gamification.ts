@@ -1,6 +1,7 @@
 import { db } from './db';
 import { users, achievements, userAchievements, progress, userChallenges } from './db/schema';
 import { eq, and, gt, count } from 'drizzle-orm';
+import { Achievement } from '@/types';
 
 // Experience points required for each level (exponential growth)
 const LEVEL_EXPERIENCE = [
@@ -93,7 +94,7 @@ export function getExperienceForNextLevel(currentLevel: number): number {
  * @param userId User ID
  * @returns Array of newly unlocked achievements
  */
-export async function checkAchievements(userId: number): Promise<any[]> {
+export async function checkAchievements(userId: number): Promise<Achievement[]> {
   // Get user progress data
   const userProgress = await db.query.progress.findFirst({
     where: eq(progress.userId, userId),

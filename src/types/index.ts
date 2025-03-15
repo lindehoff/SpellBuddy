@@ -14,11 +14,15 @@ export interface UserPreferences {
 }
 
 export interface Achievement {
-  id: string
+  id: number
   name: string
   description: string
   icon: string
-  unlockedAt?: Date
+  unlockedAt?: number
+  isNew?: boolean
+  requiredValue: number
+  achievementType: string
+  createdAt: number
 }
 
 export interface ExerciseResult {
