@@ -7,10 +7,12 @@ export interface ApiResponse<T = unknown> {
 }
 
 export interface UserPreferences {
-  difficulty: number
-  interests: string[]
-  language: string
-  theme: string
+  age: number | null
+  interests: string | null
+  difficultyLevel: string
+  topicsOfInterest: string | null
+  adaptiveDifficulty: number
+  currentDifficultyScore: number
 }
 
 export interface Achievement {
@@ -36,26 +38,4 @@ export interface SpeechRecognitionResult {
   transcript: string
   confidence: number
   isFinal: boolean
-}
-
-export interface CustomSpeechRecognition extends EventTarget {
-  continuous: boolean
-  grammars: unknown
-  interimResults: boolean
-  lang: string
-  maxAlternatives: number
-  onaudioend: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onaudiostart: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onend: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onerror: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onnomatch: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => unknown) | null
-  onsoundend: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onsoundstart: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onspeechend: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onspeechstart: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  onstart: ((this: SpeechRecognition, ev: Event) => unknown) | null
-  start: () => void
-  stop: () => void
-  abort: () => void
 } 

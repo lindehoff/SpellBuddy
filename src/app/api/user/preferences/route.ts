@@ -3,17 +3,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { userPreferences } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { ApiResponse } from '@/types';
+import { ApiResponse, UserPreferences } from '@/types';
 import { APIError, AuthenticationError, ValidationError } from '@/lib/errors';
-
-interface UserPreferencesResponse {
-  age: number | null;
-  interests: string | null;
-  difficultyLevel: string;
-  topicsOfInterest: string | null;
-  adaptiveDifficulty: number;
-  currentDifficultyScore: number;
-}
 
 // GET /api/user/preferences - Get user preferences
 export async function GET(_request: NextRequest) {
@@ -32,7 +23,7 @@ export async function GET(_request: NextRequest) {
       throw new ValidationError('User preferences not found');
     }
 
-    const response: ApiResponse<UserPreferencesResponse> = {
+    const response: ApiResponse<UserPreferences> = {
       success: true,
       data: {
         age: preferences.age,
@@ -101,7 +92,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update only provided fields
-    const updateData: Partial<UserPreferencesResponse> & { updatedAt?: number } = {};
+    const updateData: Partial<UserPreferences> & { updatedAt?: number } = {};
     if (age !== undefined) updateData.age = age;
     if (interests !== undefined) updateData.interests = interests;
     if (difficultyLevel !== undefined) updateData.difficultyLevel = difficultyLevel;
@@ -114,7 +105,7 @@ export async function PUT(request: NextRequest) {
       .set(updateData)
       .where(eq(userPreferences.userId, user.id));
 
-    const response: ApiResponse<UserPreferencesResponse> = {
+    const response: ApiResponse<UserPreferences> = {
       success: true,
       data: {
         age: updateData.age ?? null,
