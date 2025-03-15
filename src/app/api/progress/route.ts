@@ -1,30 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as service from '@/lib/service';
-import { requireAuth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
+import { getProgressReport } from '@/lib/openai';
+import { ApiResponse } from '@/types';
+import { APIError, AuthenticationError } from '@/lib/errors';
+
+interface ProgressReport {
+  summary: string;
+  strengths: string;
+  challenges: string;
+  tips: string[];
+  encouragement: string;
+}
 
 // GET /api/progress - Get progress report
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    // Get the current user (will throw if not authenticated)
-    const user = await requireAuth();
+    const user = await getCurrentUser();
     
-    // Get progress report
-    const report = await service.getProgressReport(user.id);
-    
-    return NextResponse.json(report);
-  } catch (error: any) {
-    console.error('Error getting progress report:', error);
-    
-    if (error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    if (!user) {
+      throw new AuthenticationError('Not authenticated');
     }
-    
-    return NextResponse.json(
-      { error: 'Failed to get progress report' },
-      { status: 500 }
+
+    // For now, using mock data - in production, fetch real stats from database
+    const report = await getProgressReport(
+      10, // exerciseCount
+      80, // correctWordCount
+      20, // incorrectWordCount
+      ['difficult', 'words', 'here'] // difficultWords
     );
+
+    const response: ApiResponse<ProgressReport> = {
+      success: true,
+      data: report
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    if (error instanceof APIError) {
+      const response: ApiResponse = {
+        success: false,
+        error: error.message
+      };
+      return NextResponse.json(response, { status: error.status });
+    }
+
+    console.error('Error fetching progress:', error);
+    const response: ApiResponse = {
+      success: false,
+      error: 'An unexpected error occurred'
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 } 
