@@ -3,7 +3,11 @@ import { loginUser, setAuthCookie } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { usernameOrEmail, password } = await request.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { usernameOrEmail, password } = await request.json() as {
+      usernameOrEmail: string;
+      password: string;
+    };
     
     // Validate input
     if (!usernameOrEmail || !password) {
