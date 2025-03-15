@@ -42,6 +42,20 @@ export async function seedAchievements() {
       requiredValue: 30,
       achievementType: 'streak',
     },
+    {
+      name: 'Spelling Warrior',
+      description: 'Practice for 60 days in a row',
+      icon: '⚔️',
+      requiredValue: 60,
+      achievementType: 'streak',
+    },
+    {
+      name: 'Spelling Legend',
+      description: 'Practice for 100 days in a row',
+      icon: '👑',
+      requiredValue: 100,
+      achievementType: 'streak',
+    },
     
     // Exercise count achievements
     {
@@ -72,6 +86,13 @@ export async function seedAchievements() {
       requiredValue: 500,
       achievementType: 'exercises',
     },
+    {
+      name: 'Spelling Virtuoso',
+      description: 'Complete 1000 exercises',
+      icon: '🏅',
+      requiredValue: 1000,
+      achievementType: 'exercises',
+    },
     
     // Perfect exercise achievements
     {
@@ -95,6 +116,20 @@ export async function seedAchievements() {
       requiredValue: 25,
       achievementType: 'perfect_exercises',
     },
+    {
+      name: 'Perfect Expert',
+      description: 'Complete 50 exercises with no spelling mistakes',
+      icon: '🌟',
+      requiredValue: 50,
+      achievementType: 'perfect_exercises',
+    },
+    {
+      name: 'Perfect Master',
+      description: 'Complete 100 exercises with no spelling mistakes',
+      icon: '🌠',
+      requiredValue: 100,
+      achievementType: 'perfect_exercises',
+    },
     
     // Word count achievements
     {
@@ -116,6 +151,20 @@ export async function seedAchievements() {
       description: 'Learn 500 words correctly',
       icon: '📖',
       requiredValue: 500,
+      achievementType: 'correct_words',
+    },
+    {
+      name: 'Word Wizard',
+      description: 'Learn 1000 words correctly',
+      icon: '🧙',
+      requiredValue: 1000,
+      achievementType: 'correct_words',
+    },
+    {
+      name: 'Lexicon Legend',
+      description: 'Learn 2000 words correctly',
+      icon: '📚',
+      requiredValue: 2000,
       achievementType: 'correct_words',
     },
     
@@ -148,6 +197,20 @@ export async function seedAchievements() {
       requiredValue: 50,
       achievementType: 'level',
     },
+    {
+      name: 'Level 75 Reached',
+      description: 'Reach level 75',
+      icon: '🏆',
+      requiredValue: 75,
+      achievementType: 'level',
+    },
+    {
+      name: 'Level 100 Reached',
+      description: 'Reach level 100',
+      icon: '🔱',
+      requiredValue: 100,
+      achievementType: 'level',
+    },
     
     // Challenge achievements
     {
@@ -158,11 +221,122 @@ export async function seedAchievements() {
       achievementType: 'challenges',
     },
     {
+      name: 'Challenge Enthusiast',
+      description: 'Complete 5 daily challenges',
+      icon: '🎯',
+      requiredValue: 5,
+      achievementType: 'challenges',
+    },
+    {
       name: 'Challenge Master',
       description: 'Complete 10 daily challenges',
       icon: '🎯',
       requiredValue: 10,
       achievementType: 'challenges',
+    },
+    {
+      name: 'Challenge Champion',
+      description: 'Complete 25 daily challenges',
+      icon: '🏹',
+      requiredValue: 25,
+      achievementType: 'challenges',
+    },
+    {
+      name: 'Challenge Legend',
+      description: 'Complete 50 daily challenges',
+      icon: '🏆',
+      requiredValue: 50,
+      achievementType: 'challenges',
+    },
+    
+    // Accuracy achievements
+    {
+      name: 'Accuracy Novice',
+      description: 'Achieve 70% accuracy in an exercise',
+      icon: '🎯',
+      requiredValue: 70,
+      achievementType: 'accuracy',
+    },
+    {
+      name: 'Accuracy Apprentice',
+      description: 'Achieve 80% accuracy in an exercise',
+      icon: '🎯',
+      requiredValue: 80,
+      achievementType: 'accuracy',
+    },
+    {
+      name: 'Accuracy Expert',
+      description: 'Achieve 90% accuracy in an exercise',
+      icon: '🎯',
+      requiredValue: 90,
+      achievementType: 'accuracy',
+    },
+    {
+      name: 'Accuracy Master',
+      description: 'Achieve 95% accuracy in an exercise',
+      icon: '🎯',
+      requiredValue: 95,
+      achievementType: 'accuracy',
+    },
+    {
+      name: 'Perfect Accuracy',
+      description: 'Achieve 100% accuracy in an exercise',
+      icon: '💯',
+      requiredValue: 100,
+      achievementType: 'accuracy',
+    },
+    
+    // Time-based achievements
+    {
+      name: 'Quick Learner',
+      description: 'Complete an exercise in under 2 minutes',
+      icon: '⏱️',
+      requiredValue: 2,
+      achievementType: 'time',
+    },
+    {
+      name: 'Speed Demon',
+      description: 'Complete an exercise in under 1 minute',
+      icon: '⏱️',
+      requiredValue: 1,
+      achievementType: 'time',
+    },
+    {
+      name: 'Lightning Fast',
+      description: 'Complete an exercise in under 30 seconds',
+      icon: '⚡',
+      requiredValue: 0.5,
+      achievementType: 'time',
+    },
+    
+    // Difficulty achievements
+    {
+      name: 'Beginner Mastery',
+      description: 'Complete 10 beginner difficulty exercises',
+      icon: '🔰',
+      requiredValue: 10,
+      achievementType: 'difficulty_beginner',
+    },
+    {
+      name: 'Intermediate Mastery',
+      description: 'Complete 10 intermediate difficulty exercises',
+      icon: '🔰',
+      requiredValue: 10,
+      achievementType: 'difficulty_intermediate',
+    },
+    {
+      name: 'Advanced Mastery',
+      description: 'Complete 10 advanced difficulty exercises',
+      icon: '🔰',
+      requiredValue: 10,
+      achievementType: 'difficulty_advanced',
+    },
+    {
+      name: 'Expert Mastery',
+      description: 'Complete 10 expert difficulty exercises',
+      icon: '🔰',
+      requiredValue: 10,
+      achievementType: 'difficulty_expert',
     },
   ];
 

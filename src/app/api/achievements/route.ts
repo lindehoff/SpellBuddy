@@ -1,30 +1,55 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { achievements, userAchievements } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    // Get the current user (will throw if not authenticated)
-    const user = await requireAuth();
+    // Get the current user (returns null if not authenticated)
+    const user = await getCurrentUser();
     
-    // Get all achievements
+    // Get all achievements from the database
     const allAchievements = await db.select().from(achievements);
     
-    // Get user's unlocked achievements
-    const userUnlocked = await db.select()
-      .from(userAchievements)
-      .where(eq(userAchievements.userId, user.id));
+    console.log(`Found ${allAchievements.length} achievements in the database`);
     
-    // Create a map of unlocked achievements
-    const unlockedMap = new Map();
-    userUnlocked.forEach(ua => {
-      unlockedMap.set(ua.achievementId, {
-        unlockedAt: ua.unlockedAt,
-        isNew: ua.isNew === 1,
+    if (allAchievements.length === 0) {
+      // If no achievements found, try to seed them
+      console.log('No achievements found, attempting to seed them');
+      
+      try {
+        // Import dynamically to avoid circular dependencies
+        const { seedAchievements } = await import('@/lib/db/seed/achievements');
+        await seedAchievements();
+        
+        // Try to fetch achievements again
+        const seededAchievements = await db.select().from(achievements);
+        console.log(`After seeding, found ${seededAchievements.length} achievements`);
+        
+        if (seededAchievements.length > 0) {
+          allAchievements.push(...seededAchievements);
+        }
+      } catch (seedError) {
+        console.error('Error seeding achievements:', seedError);
+      }
+    }
+    
+    // If user is authenticated, get their unlocked achievements
+    let unlockedMap = new Map();
+    if (user) {
+      const userUnlocked = await db.select()
+        .from(userAchievements)
+        .where(eq(userAchievements.userId, user.id));
+      
+      // Create a map of unlocked achievements
+      userUnlocked.forEach(ua => {
+        unlockedMap.set(ua.achievementId, {
+          unlockedAt: ua.unlockedAt,
+          isNew: ua.isNew === 1,
+        });
       });
-    });
+    }
     
     // Combine the data
     const achievementsWithStatus = allAchievements.map(achievement => {
@@ -41,13 +66,9 @@ export async function GET() {
       };
     });
     
-    // Sort achievements: unlocked first, then by type and required value
+    // Sort achievements by type and required value
     achievementsWithStatus.sort((a, b) => {
-      // Unlocked achievements first
-      if (a.unlockedAt && !b.unlockedAt) return -1;
-      if (!a.unlockedAt && b.unlockedAt) return 1;
-      
-      // Then by type
+      // First by type
       if (a.achievementType !== b.achievementType) {
         return a.achievementType.localeCompare(b.achievementType);
       }
@@ -59,13 +80,6 @@ export async function GET() {
     return NextResponse.json({ achievements: achievementsWithStatus });
   } catch (error: Error | unknown) {
     console.error('Error getting achievements:', error);
-    
-    if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
     
     return NextResponse.json(
       { error: 'Failed to get achievements' },

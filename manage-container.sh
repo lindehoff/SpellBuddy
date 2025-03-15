@@ -12,6 +12,7 @@ ENV_FILE="/volume1/docker/spellbuddy/.env.local"
 DEBUG_MODE="false"
 ACTION="start"  # Default action: start the container
 OPTIMIZE_FLAGS=""
+VERIFY_ACHIEVEMENTS="false"
 
 # Print usage information
 function print_usage {
@@ -27,6 +28,7 @@ function print_usage {
   echo "  upgrade     Pull the latest image and restart the container"
   echo "  logs        Show container logs"
   echo "  optimize    Build an optimized Docker image"
+  echo "  verify      Verify and seed achievements if needed"
   echo ""
   echo "Options:"
   echo "  --container-name NAME   Container name (default: spellbuddy)"
@@ -36,6 +38,7 @@ function print_usage {
   echo "  --env-file FILE         Environment file to mount (default: /volume1/docker/spellbuddy/.env.local)"
   echo "  --debug                 Enable debug mode with additional logging"
   echo "  --optimize-flags FLAGS  Additional flags to pass to optimize-docker-build.sh"
+  echo "  --verify-achievements   Force verification and seeding of achievements"
   echo "  --help                  Show this help message"
   echo ""
   echo "Examples:"
@@ -43,11 +46,12 @@ function print_usage {
   echo "  $0 rebuild --debug      Rebuild and start the container with debug mode enabled"
   echo "  $0 upgrade              Pull the latest image and restart the container"
   echo "  $0 logs                 Show container logs"
+  echo "  $0 verify               Verify and seed achievements if needed"
   echo "  $0 optimize --optimize-flags \"--no-cache --benchmark\""
 }
 
 # Parse action (first argument)
-if [[ $1 == "start" || $1 == "stop" || $1 == "restart" || $1 == "rebuild" || $1 == "upgrade" || $1 == "logs" || $1 == "optimize" ]]; then
+if [[ $1 == "start" || $1 == "stop" || $1 == "restart" || $1 == "rebuild" || $1 == "upgrade" || $1 == "logs" || $1 == "optimize" || $1 == "verify" ]]; then
   ACTION="$1"
   shift
 fi
@@ -82,6 +86,10 @@ while [[ $# -gt 0 ]]; do
     --optimize-flags)
       OPTIMIZE_FLAGS="$2"
       shift 2
+      ;;
+    --verify-achievements)
+      VERIFY_ACHIEVEMENTS="true"
+      shift
       ;;
     --help)
       print_usage
@@ -150,11 +158,19 @@ function start_container {
     stop_container
   fi
   
+  # Add verification flag if needed
+  VERIFY_ENV=""
+  if [ "$VERIFY_ACHIEVEMENTS" = "true" ]; then
+    echo "Enabling achievement verification"
+    VERIFY_ENV="-e VERIFY_ACHIEVEMENTS=true"
+  fi
+  
   echo "Starting container: $CONTAINER_NAME"
   docker run -d \
     --name "$CONTAINER_NAME" \
     -p "$PORT:3000" \
     $DEBUG_ENV \
+    $VERIFY_ENV \
     -e OPENAI_API_KEY="$OPENAI_API_KEY" \
     -e JWT_SECRET="$JWT_SECRET" \
     -e OPENAI_MODEL="$OPENAI_MODEL" \
@@ -206,6 +222,23 @@ function pull_image {
   docker pull "$IMAGE_NAME"
 }
 
+# Function to verify and seed achievements
+function verify_achievements {
+  echo "Verifying and seeding achievements in container: $CONTAINER_NAME"
+  
+  if ! docker ps | grep -q "$CONTAINER_NAME"; then
+    echo "Container $CONTAINER_NAME is not running. Starting it first."
+    start_container
+    # Wait for container to start
+    sleep 5
+  fi
+  
+  echo "Running achievement verification script..."
+  docker exec "$CONTAINER_NAME" node /app/verify-achievements.js
+  
+  echo "Achievement verification completed."
+}
+
 # Execute the requested action
 case "$ACTION" in
   start)
@@ -238,6 +271,10 @@ case "$ACTION" in
     optimize_image
     start_container
     show_logs
+    ;;
+  verify)
+    VERIFY_ACHIEVEMENTS="true"
+    verify_achievements
     ;;
   *)
     echo "Unknown action: $ACTION"

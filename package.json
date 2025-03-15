@@ -9,7 +9,11 @@
     "lint": "next lint",
     "db:generate": "node -r @swc-node/register src/lib/db/schema-generator.ts && drizzle-kit generate:sqlite",
     "db:migrate": "node -r @swc-node/register src/lib/db/migrate.ts",
-    "db:gamify": "node -r @swc-node/register src/lib/db/migrate.ts --gamify"
+    "db:gamify": "node -r @swc-node/register src/lib/db/migrate.ts --gamify",
+    "db:seed-achievements": "tsx src/scripts/force-seed-achievements.ts",
+    "semantic-release": "semantic-release",
+    "commit": "git-cz",
+    "prepare": "husky install"
   },
   "dependencies": {
     "ai": "^4.1.58",
@@ -27,7 +31,15 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^17.7.1",
+    "@commitlint/config-conventional": "^17.7.0",
     "@eslint/eslintrc": "^3",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^10.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^9.0.4",
+    "@semantic-release/npm": "^10.0.4",
+    "@semantic-release/release-notes-generator": "^11.0.7",
     "@swc-node/register": "^1.10.10",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.12",
@@ -39,12 +51,21 @@
     "@types/react-speech-recognition": "^3.9.6",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.16",
+    "commitizen": "^4.3.0",
+    "cz-conventional-changelog": "^3.3.0",
     "drizzle-kit": "^0.30.5",
     "eslint": "^9",
     "eslint-config-next": "15.2.2",
+    "husky": "^8.0.3",
     "postcss": "^8.4.31",
+    "semantic-release": "^21.0.7",
     "tailwindcss": "^3.3.5",
     "tsx": "^4.19.3",
     "typescript": "^5"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
   }
 }

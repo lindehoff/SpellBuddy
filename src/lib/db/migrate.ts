@@ -5,6 +5,7 @@ import * as path from 'path';
 import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { DrizzleDB } from './types';
 import Database from 'better-sqlite3';
+import { initializeDatabase, checkAndUpdateDatabase } from './init';
 
 async function runMigrations() {
   console.log('Running migrations...');
@@ -41,6 +42,9 @@ async function runMigrations() {
     try {
       await migrate(db as DrizzleDB, { migrationsFolder: './drizzle/migrations' });
       console.log('Migrations completed successfully.');
+      
+      // Initialize database with required data
+      await initializeDatabase();
     } catch (migrateError) {
       console.error('Migration error:', migrateError);
       
@@ -180,6 +184,9 @@ async function runMigrations() {
         
         console.log('Tables created successfully.');
         
+        // Initialize database with required data
+        await initializeDatabase();
+        
         // Close the database connection
         sqlite.close();
       } catch (sqliteError) {
@@ -187,6 +194,9 @@ async function runMigrations() {
         throw sqliteError;
       }
     }
+    
+    // Check if database needs updates (e.g., new achievements)
+    await checkAndUpdateDatabase();
   } catch (error) {
     console.error('Migration setup failed:', error);
     throw error;

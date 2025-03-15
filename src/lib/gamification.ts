@@ -1,6 +1,6 @@
 import { db } from './db';
-import { users, achievements, userAchievements, progress } from './db/schema';
-import { eq, and, gt } from 'drizzle-orm';
+import { users, achievements, userAchievements, progress, userChallenges } from './db/schema';
+import { eq, and, gt, count } from 'drizzle-orm';
 
 // Experience points required for each level (exponential growth)
 const LEVEL_EXPERIENCE = [
@@ -155,7 +155,33 @@ export async function checkAchievements(userId: number): Promise<any[]> {
         shouldUnlock = (user.level || 1) >= achievement.requiredValue;
         break;
       case 'challenges':
-        // This would require additional query to count completed challenges
+        // Count completed challenges for the user
+        const completedChallenges = await db.select({ count: count() })
+          .from(userChallenges)
+          .where(
+            and(
+              eq(userChallenges.userId, userId),
+              eq(userChallenges.isCompleted, 1)
+            )
+          );
+        
+        shouldUnlock = completedChallenges[0]?.count >= achievement.requiredValue;
+        break;
+      case 'accuracy':
+        // This would be checked when an exercise is completed
+        // For now, we'll skip this check
+        shouldUnlock = false;
+        break;
+      case 'time':
+        // This would be checked when an exercise is completed
+        // For now, we'll skip this check
+        shouldUnlock = false;
+        break;
+      case 'difficulty_beginner':
+      case 'difficulty_intermediate':
+      case 'difficulty_advanced':
+      case 'difficulty_expert':
+        // Count exercises completed at the specified difficulty level
         // For now, we'll skip this check
         shouldUnlock = false;
         break;

@@ -161,6 +161,51 @@ async function createTablesDirectly() {
 createTablesDirectly();
 EOFMIGRATION
 
+# Create a script to verify and seed achievements if needed
+cat > /app/verify-achievements.js << 'EOFACHIEVEMENTS'
+const fs = require('fs');
+const path = require('path');
+
+async function verifyAndSeedAchievements() {
+  console.log("Verifying achievements in the database...");
+  
+  try {
+    // Import the database connection
+    const { db } = require('./src/lib/db/index');
+    const { achievements } = require('./src/lib/db/schema');
+    
+    // Check if achievements exist
+    const achievementsCount = await db.select({ count: db.sql`count(*)` }).from(achievements);
+    const count = achievementsCount[0]?.count || 0;
+    
+    console.log(`Found ${count} achievements in the database`);
+    
+    // If no achievements, seed them
+    if (count === 0) {
+      console.log("No achievements found. Seeding achievements...");
+      
+      try {
+        const { seedAchievements } = require('./src/lib/db/seed/achievements');
+        await seedAchievements();
+        
+        // Verify seeding was successful
+        const newCount = await db.select({ count: db.sql`count(*)` }).from(achievements);
+        console.log(`Successfully seeded ${newCount[0]?.count || 0} achievements`);
+      } catch (seedError) {
+        console.error("Error seeding achievements:", seedError);
+      }
+    } else {
+      console.log("Achievements already exist in the database");
+    }
+  } catch (err) {
+    console.error("Error verifying achievements:", err);
+  }
+}
+
+// Run the function
+verifyAndSeedAchievements();
+EOFACHIEVEMENTS
+
 # Initialize database if it does not exist
 if [ ! -s "/app/data/sqlite.db" ]; then
   echo "Database does not exist or is empty. Initializing..."
@@ -185,6 +230,10 @@ if [ ! -s "/app/data/sqlite.db" ]; then
       node /app/migration-patch.js
     fi
   fi
+  
+  # Verify and seed achievements
+  echo "Verifying and seeding achievements..."
+  node /app/verify-achievements.js
 else
   # Check if we need to run migrations
   echo "Checking for pending migrations..."
@@ -205,6 +254,10 @@ else
       node /app/migration-patch.js
     fi
   fi
+  
+  # Verify and seed achievements
+  echo "Verifying and seeding achievements..."
+  node /app/verify-achievements.js
 fi
 
 # Print environment variables that will be available to the application

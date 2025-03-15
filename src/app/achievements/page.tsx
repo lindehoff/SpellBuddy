@@ -12,12 +12,12 @@ export default function AchievementsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
+  // Remove the redirect to login
+  // useEffect(() => {
+  //   if (!authLoading && !user) {
+  //     router.push('/login');
+  //   }
+  // }, [user, authLoading, router]);
   
   // Fetch all achievements
   useEffect(() => {
@@ -27,17 +27,12 @@ export default function AchievementsPage() {
         
         const response = await fetch('/api/achievements');
         
-        if (response.status === 401) {
-          // Redirect to login if not authenticated
-          router.push('/login');
-          return;
-        }
-        
         if (!response.ok) {
           throw new Error('Failed to fetch achievements');
         }
         
         const data = await response.json();
+        console.log(`Received ${data.achievements?.length || 0} achievements from API`);
         setAchievements(data.achievements || []);
       } catch (err) {
         console.error('Error fetching achievements:', err);
@@ -47,10 +42,9 @@ export default function AchievementsPage() {
       }
     }
     
-    if (user) {
-      fetchAchievements();
-    }
-  }, [user, router]);
+    // Fetch achievements regardless of authentication status
+    fetchAchievements();
+  }, []);
   
   if (authLoading) {
     return (
@@ -63,9 +57,10 @@ export default function AchievementsPage() {
     );
   }
   
-  if (!user) {
-    return null; // Will redirect in the useEffect
-  }
+  // Remove the early return for unauthenticated users
+  // if (!user) {
+  //   return null; // Will redirect in the useEffect
+  // }
   
   if (loading) {
     return (
@@ -111,6 +106,12 @@ export default function AchievementsPage() {
     'correct_words': '🔤 Word Achievements',
     'level': '🏆 Level Achievements',
     'challenges': '🧩 Challenge Achievements',
+    'accuracy': '🎯 Accuracy Achievements',
+    'time': '⏱️ Time-based Achievements',
+    'difficulty_beginner': '🔰 Beginner Difficulty Achievements',
+    'difficulty_intermediate': '🔰 Intermediate Difficulty Achievements',
+    'difficulty_advanced': '🔰 Advanced Difficulty Achievements',
+    'difficulty_expert': '🔰 Expert Difficulty Achievements',
     'other': '🎯 Other Achievements',
   };
   
@@ -123,17 +124,35 @@ export default function AchievementsPage() {
       <div className="relative z-10">
         <h1 className="text-4xl font-bold gradient-text mb-8 text-center font-poppins">Achievements</h1>
         
+        {!user && (
+          <div className="glass-card p-6 rounded-xl mb-8 text-center">
+            <p className="mb-4">Sign in to track your achievements!</p>
+            <button
+              onClick={() => router.push('/login')}
+              className="shine-button text-white font-bold py-2 px-6 rounded-lg transition-all duration-300 hover:scale-105 mr-4"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => router.push('/register')}
+              className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-6 rounded-lg transition-all duration-300 hover:scale-105"
+            >
+              Register
+            </button>
+          </div>
+        )}
+        
         {achievements.length === 0 ? (
           <div className="glass-card p-8 rounded-xl text-center max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold gradient-text mb-6">No Achievements Yet</h2>
+            <h2 className="text-2xl font-bold gradient-text mb-6">No Achievements Available</h2>
             <p className="mb-8 text-lg opacity-90">
-              Complete exercises and practice regularly to unlock achievements!
+              There seems to be an issue loading achievements. Please try again later.
             </p>
             <button
-              onClick={() => router.push('/practice')}
+              onClick={() => window.location.reload()}
               className="shine-button text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105"
             >
-              Start Practicing
+              Refresh Page
             </button>
           </div>
         ) : (
