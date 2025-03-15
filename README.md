@@ -17,6 +17,22 @@ SpellBuddy is a modern web application designed to help students with dyslexia p
 - **Modern Design**: Beautiful glass morphism UI with dark mode support
 - **Responsive**: Works on desktop, tablet, and mobile devices
 
+### 🏆 Achievement System
+
+SpellBuddy features a comprehensive achievement system with 44 achievements across 9 categories:
+
+- **Streak Achievements**: Rewards for consistent daily practice
+- **Exercise Count**: Milestones for completing exercises
+- **Perfect Exercises**: Recognition for exercises completed without mistakes
+- **Word Count**: Achievements for learning new words
+- **Level Achievements**: Rewards for reaching specific levels
+- **Challenge Achievements**: Recognition for completing challenges
+- **Accuracy Achievements**: Rewards for achieving high accuracy
+- **Time-based Achievements**: Recognition for completing exercises quickly
+- **Difficulty Achievements**: Rewards for tackling harder content
+
+See [ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) for detailed documentation on the achievement system.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -176,6 +192,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## 📚 Documentation
+
+- [ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md): Detailed documentation of the achievement system
+- [RELEASE.md](RELEASE.md): Information about the release process
+- [CONTRIBUTING.md](CONTRIBUTING.md): Guidelines for contributing to the project
 
 ## 📄 License
 
