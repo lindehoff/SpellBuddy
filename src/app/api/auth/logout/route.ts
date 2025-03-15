@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clearAuthCookie } from '@/lib/auth';
+import { ApiResponse } from '@/types';
+import { APIError } from '@/lib/errors';
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
-    // Clear the authentication cookie
     await clearAuthCookie();
     
-    return NextResponse.json({ 
-      message: 'Logout successful'
-    });
-  } catch (error: any) {
+    const response: ApiResponse = {
+      success: true,
+      data: { message: 'Logged out successfully' }
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    if (error instanceof APIError) {
+      const response: ApiResponse = {
+        success: false,
+        error: error.message
+      };
+      return NextResponse.json(response, { status: error.status });
+    }
+
     console.error('Logout error:', error);
-    
-    return NextResponse.json(
-      { message: error.message || 'Logout failed' },
-      { status: 500 }
-    );
+    const response: ApiResponse = {
+      success: false,
+      error: 'An unexpected error occurred'
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 } 

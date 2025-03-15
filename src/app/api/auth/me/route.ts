@@ -1,25 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, UserData } from '@/lib/auth';
+import { ApiResponse } from '@/types';
+import { APIError, AuthenticationError } from '@/lib/errors';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    // Get the current user from the cookie
     const user = await getCurrentUser();
     
     if (!user) {
-      return NextResponse.json(
-        { message: 'Not authenticated' },
-        { status: 401 }
-      );
+      throw new AuthenticationError('Not authenticated');
     }
-    
-    return NextResponse.json({ user });
-  } catch (error: any) {
-    console.error('Get current user error:', error);
-    
-    return NextResponse.json(
-      { message: error.message || 'Failed to get current user' },
-      { status: 500 }
-    );
+
+    const response: ApiResponse<UserData> = {
+      success: true,
+      data: user
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    if (error instanceof APIError) {
+      const response: ApiResponse = {
+        success: false,
+        error: error.message
+      };
+      return NextResponse.json(response, { status: error.status });
+    }
+
+    console.error('Error fetching user data:', error);
+    const response: ApiResponse = {
+      success: false,
+      error: 'An unexpected error occurred'
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 } 

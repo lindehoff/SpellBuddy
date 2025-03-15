@@ -1,50 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { registerUser, setAuthCookie } from '@/lib/auth';
-import jwt from 'jsonwebtoken';
+import { registerUser, UserData } from '@/lib/auth';
+import { ApiResponse } from '@/types';
+import { APIError, ValidationError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, email, password } = await request.json();
-    
+    const body = await request.json();
+    const { username, email, password } = body;
+
     // Validate input
     if (!username || !email || !password) {
-      return NextResponse.json(
-        { message: 'Username, email, and password are required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Username, email, and password are required');
     }
-    
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new ValidationError('Invalid email format');
+    }
+
+    // Validate password strength
     if (password.length < 8) {
-      return NextResponse.json(
-        { message: 'Password must be at least 8 characters long' },
-        { status: 400 }
-      );
+      throw new ValidationError('Password must be at least 8 characters long');
     }
-    
-    // Register the user
+
+    // Validate username format
+    const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+    if (!usernameRegex.test(username)) {
+      throw new ValidationError('Username must be 3-20 characters and contain only letters, numbers, underscores, and hyphens');
+    }
+
     const user = await registerUser(username, email, password);
-    
-    // Generate JWT token
-    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    // Set the authentication cookie
-    await setAuthCookie(token);
-    
-    return NextResponse.json({ 
-      message: 'Registration successful',
-      user
-    }, { status: 201 });
-  } catch (error: any) {
+
+    const response: ApiResponse<UserData> = {
+      success: true,
+      data: user
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    if (error instanceof APIError) {
+      const response: ApiResponse = {
+        success: false,
+        error: error.message
+      };
+      return NextResponse.json(response, { status: error.status });
+    }
+
     console.error('Registration error:', error);
-    
-    return NextResponse.json(
-      { message: error.message || 'Registration failed' },
-      { status: 400 }
-    );
+    const response: ApiResponse = {
+      success: false,
+      error: 'An unexpected error occurred'
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 } 
