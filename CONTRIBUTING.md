@@ -63,6 +63,24 @@ npm run commit
 
 This will guide you through creating a properly formatted commit message.
 
+### Using the Commit Template
+
+Alternatively, you can use the provided commit template:
+
+1. Configure Git to use the template:
+
+```bash
+git config --local commit.template .github/commit-template.txt
+```
+
+2. When committing, Git will open your editor with the template:
+
+```bash
+git commit
+```
+
+3. Fill in the template according to the guidelines and save to create your commit.
+
 ## Release Process
 
 This project uses [semantic-release](https://github.com/semantic-release/semantic-release) for automated versioning and changelog generation based on commit messages.

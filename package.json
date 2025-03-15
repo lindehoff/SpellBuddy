@@ -13,7 +13,7 @@
     "db:seed-achievements": "tsx src/scripts/force-seed-achievements.ts",
     "semantic-release": "semantic-release",
     "commit": "git-cz",
-    "prepare": "husky install"
+    "prepare": "[ -d .git ] && husky install || echo 'Skipping husky installation'"
   },
   "dependencies": {
     "ai": "^4.1.58",
