@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-// Define the SpeechRecognition interface
+// Define the SpeechRecognitionInterface using the types from our declaration file
 interface SpeechRecognitionInterface extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -10,19 +10,19 @@ interface SpeechRecognitionInterface extends EventTarget {
   start: () => void;
   stop: () => void;
   abort: () => void;
-  onresult: (event: any) => void;
-  onerror: (event: any) => void;
-  onend: (event: any) => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: (event: Event) => void;
 }
 
 // Check if browser supports SpeechRecognition
 const browserSupportsSpeechRecognition = () => {
   return !!(
     typeof window !== 'undefined' &&
-    (window as any).SpeechRecognition ||
-    (window as any).webkitSpeechRecognition ||
-    (window as any).mozSpeechRecognition ||
-    (window as any).msSpeechRecognition
+    (window as Window & { SpeechRecognition?: unknown }).SpeechRecognition ||
+    (window as Window & { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition ||
+    (window as Window & { mozSpeechRecognition?: unknown }).mozSpeechRecognition ||
+    (window as Window & { msSpeechRecognition?: unknown }).msSpeechRecognition
   );
 };
 
@@ -31,10 +31,10 @@ const createRecognitionInstance = (): SpeechRecognitionInterface | null => {
   if (typeof window === 'undefined') return null;
   
   const SpeechRecognitionAPI = 
-    (window as any).SpeechRecognition ||
-    (window as any).webkitSpeechRecognition ||
-    (window as any).mozSpeechRecognition ||
-    (window as any).msSpeechRecognition;
+    (window as Window & { SpeechRecognition?: new () => SpeechRecognitionInterface }).SpeechRecognition ||
+    (window as Window & { webkitSpeechRecognition?: new () => SpeechRecognitionInterface }).webkitSpeechRecognition ||
+    (window as Window & { mozSpeechRecognition?: new () => SpeechRecognitionInterface }).mozSpeechRecognition ||
+    (window as Window & { msSpeechRecognition?: new () => SpeechRecognitionInterface }).msSpeechRecognition;
   
   if (!SpeechRecognitionAPI) return null;
   
@@ -93,7 +93,7 @@ export const useSpeechRecognition = () => {
         recognition.stop();
       }
     };
-  }, []);
+  }, [recognition]);
   
   // Start listening
   const startListening = useCallback(() => {

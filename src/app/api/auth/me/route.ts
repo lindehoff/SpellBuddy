@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser, UserData } from '@/lib/auth';
 import { ApiResponse } from '@/types';
 import { APIError, AuthenticationError } from '@/lib/errors';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const user = await getCurrentUser();
     

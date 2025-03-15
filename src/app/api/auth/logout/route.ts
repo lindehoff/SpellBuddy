@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { clearAuthCookie } from '@/lib/auth';
 import { ApiResponse } from '@/types';
 import { APIError } from '@/lib/errors';
 
-export async function POST(_request: NextRequest) {
+export async function POST() {
   try {
     await clearAuthCookie();
     

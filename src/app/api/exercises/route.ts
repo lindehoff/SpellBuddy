@@ -13,7 +13,7 @@ interface Exercise {
 }
 
 // POST /api/exercises - Create a new exercise
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Get the current user (will throw if not authenticated)
     const user = await requireAuth();
@@ -21,25 +21,33 @@ export async function POST(request: NextRequest) {
     // Create a new exercise
     const exercise = await service.createNewExercise(user.id);
     
-    return NextResponse.json(exercise);
-  } catch (error: any) {
-    console.error('Error creating exercise:', error);
+    const response: ApiResponse<unknown> = {
+      success: true,
+      data: exercise
+    };
     
-    if (error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    return NextResponse.json(response);
+  } catch (error) {
+    if (error instanceof APIError) {
+      const response: ApiResponse = {
+        success: false,
+        error: error.message
+      };
+      return NextResponse.json(response, { status: error.status });
     }
     
-    return NextResponse.json(
-      { error: 'Failed to create exercise' },
-      { status: 500 }
-    );
+    console.error('Error creating exercise:', error);
+    
+    const response: ApiResponse = {
+      success: false,
+      error: 'Failed to create exercise'
+    };
+    
+    return NextResponse.json(response, { status: 500 });
   }
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const user = await getCurrentUser();
     

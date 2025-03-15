@@ -7,7 +7,7 @@ import { ApiResponse, UserPreferences } from '@/types';
 import { APIError, AuthenticationError, ValidationError } from '@/lib/errors';
 
 // GET /api/user/preferences - Get user preferences
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const user = await getCurrentUser();
     

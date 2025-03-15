@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getProgressReport } from '@/lib/openai';
 import { ApiResponse } from '@/types';
@@ -13,7 +13,7 @@ interface ProgressReport {
 }
 
 // GET /api/progress - Get progress report
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const user = await getCurrentUser();
     

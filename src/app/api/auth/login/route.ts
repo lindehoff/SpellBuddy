@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { loginUser, setAuthCookie } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { loginUser } from '@/lib/auth';
 import { ApiResponse } from '@/types';
-import { APIError, ValidationError, AuthenticationError } from '@/lib/errors';
+import { APIError, ValidationError } from '@/lib/errors';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { email, password } = body;

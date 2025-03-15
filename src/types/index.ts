@@ -1,5 +1,3 @@
-import { NextRequest } from 'next/server'
-
 export interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
