@@ -1,8 +1,6 @@
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import * as schema from './schema';
-import * as fs from 'fs';
-import * as path from 'path';
 import { DrizzleDB } from './types';
 
 // Define database path - use DATABASE_URL if set, otherwise use default paths

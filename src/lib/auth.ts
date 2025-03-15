@@ -121,7 +121,7 @@ export async function verifyToken(token: string): Promise<UserData | null> {
     });
 
     return user || null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
