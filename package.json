@@ -13,7 +13,7 @@
     "db:generate": "node -r @swc-node/register src/lib/db/schema-generator.ts && drizzle-kit generate:sqlite",
     "db:migrate": "node -r @swc-node/register src/lib/db/migrate.ts",
     "db:gamify": "node -r @swc-node/register src/lib/db/migrate.ts --gamify",
-    "db:seed-achievements": "tsx src/scripts/force-seed-achievements.ts",
+    "db:seed-achievements": "tsx src/scripts/force-seed-achievements-wrapper.ts",
     "semantic-release": "semantic-release",
     "test-release": "node test-release.js",
     "test-achievements": "node scripts/test-achievements.js",

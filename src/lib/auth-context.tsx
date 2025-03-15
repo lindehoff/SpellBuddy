@@ -14,7 +14,7 @@ interface AuthContextType {
   login: (usernameOrEmail: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUserPreferences: (preferences: Record<string, any>) => Promise<void>;
+  updateUserPreferences: (preferences: Record<string, unknown>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Update user preferences
-  const updateUserPreferences = async (preferences: Record<string, any>) => {
+  const updateUserPreferences = async (preferences: Record<string, unknown>) => {
     if (!user) return;
     
     try {
@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to update preferences');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Update preferences error:', error);
       throw error;
     }

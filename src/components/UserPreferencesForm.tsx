@@ -64,8 +64,9 @@ export default function UserPreferencesForm({ onComplete }: UserPreferencesFormP
       });
       
       onComplete();
-    } catch (error: any) {
-      setError(error.message || 'Failed to save preferences');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save preferences';
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

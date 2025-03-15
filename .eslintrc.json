@@ -15,6 +15,14 @@
     "react-hooks/exhaustive-deps": "warn",
     "@typescript-eslint/no-require-imports": "error"
   },
+  "overrides": [
+    {
+      "files": ["src/scripts/force-seed-achievements.js"],
+      "rules": {
+        "@typescript-eslint/no-require-imports": "off"
+      }
+    }
+  ],
   "ignorePatterns": [
     "node_modules/",
     ".next/",
