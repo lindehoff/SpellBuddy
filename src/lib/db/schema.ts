@@ -118,4 +118,12 @@ export const userChallenges = sqliteTable("user_challenges", {
   isCompleted: integer("is_completed").notNull().default(0), // 0 = incomplete, 1 = complete
   completedAt: integer("completed_at"),
   isRewardClaimed: integer("is_reward_claimed").notNull().default(0), // 0 = unclaimed, 1 = claimed
+});
+
+// Table for storing application settings
+export const appSettings = sqliteTable("app_settings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at").notNull().$defaultFn(() => Math.floor(Date.now() / 1000)),
 }); 
