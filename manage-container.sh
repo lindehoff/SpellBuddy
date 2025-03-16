@@ -5,7 +5,8 @@
 
 # Default values
 CONTAINER_NAME="spellbuddy"
-IMAGE_NAME="lindehoff/spellbuddy:main"
+IMAGE_NAME="lindehoff/spellbuddy"
+IMAGE_TAG="latest"
 PORT="9928"
 DATA_DIR="/volume1/docker/spellbuddy/data"
 ENV_FILE="/volume1/docker/spellbuddy/.env.local"
@@ -13,6 +14,7 @@ DEBUG_MODE="false"
 ACTION="start"  # Default action: start the container
 OPTIMIZE_FLAGS=""
 VERIFY_ACHIEVEMENTS="false"
+FORCE_VERSION=""
 
 # Print usage information
 function print_usage {
@@ -29,29 +31,34 @@ function print_usage {
   echo "  logs        Show container logs"
   echo "  optimize    Build an optimized Docker image"
   echo "  verify      Verify and seed achievements if needed"
+  echo "  version     Show current version information"
   echo ""
   echo "Options:"
   echo "  --container-name NAME   Container name (default: spellbuddy)"
-  echo "  --image-name NAME       Docker image name (default: lindehoff/spellbuddy:main)"
+  echo "  --image-name NAME       Docker image name without tag (default: lindehoff/spellbuddy)"
+  echo "  --image-tag TAG        Docker image tag (default: latest)"
   echo "  --port PORT             Host port to map to container port 3000 (default: 9928)"
   echo "  --data-dir DIR          Host directory to mount as /app/data (default: /volume1/docker/spellbuddy/data)"
   echo "  --env-file FILE         Environment file to mount (default: /volume1/docker/spellbuddy/.env.local)"
   echo "  --debug                 Enable debug mode with additional logging"
   echo "  --optimize-flags FLAGS  Additional flags to pass to optimize-docker-build.sh"
   echo "  --verify-achievements   Force verification and seeding of achievements"
+  echo "  --force-version VER    Force upgrade/downgrade to a specific version"
   echo "  --help                  Show this help message"
   echo ""
   echo "Examples:"
   echo "  $0 start                Start the container with default settings"
   echo "  $0 rebuild --debug      Rebuild and start the container with debug mode enabled"
   echo "  $0 upgrade              Pull the latest image and restart the container"
+  echo "  $0 upgrade --force-version v1.2.3  Upgrade/downgrade to a specific version"
   echo "  $0 logs                 Show container logs"
   echo "  $0 verify               Verify and seed achievements if needed"
+  echo "  $0 version              Show current version information"
   echo "  $0 optimize --optimize-flags \"--no-cache --benchmark\""
 }
 
 # Parse action (first argument)
-if [[ $1 == "start" || $1 == "stop" || $1 == "restart" || $1 == "rebuild" || $1 == "upgrade" || $1 == "logs" || $1 == "optimize" || $1 == "verify" ]]; then
+if [[ $1 == "start" || $1 == "stop" || $1 == "restart" || $1 == "rebuild" || $1 == "upgrade" || $1 == "logs" || $1 == "optimize" || $1 == "verify" || $1 == "version" ]]; then
   ACTION="$1"
   shift
 fi
@@ -65,6 +72,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --image-name)
       IMAGE_NAME="$2"
+      shift 2
+      ;;
+    --image-tag)
+      IMAGE_TAG="$2"
       shift 2
       ;;
     --port)
@@ -90,6 +101,11 @@ while [[ $# -gt 0 ]]; do
     --verify-achievements)
       VERIFY_ACHIEVEMENTS="true"
       shift
+      ;;
+    --force-version)
+      FORCE_VERSION="$2"
+      IMAGE_TAG="$2"
+      shift 2
       ;;
     --help)
       print_usage
@@ -178,7 +194,7 @@ function start_container {
     -v "$DATA_DIR:/app/data:rw" \
     -v "$ENV_FILE:/app/.env.local:ro" \
     --restart always \
-    "$IMAGE_NAME"
+    "$IMAGE_NAME:$IMAGE_TAG"
     
   echo "Container $CONTAINER_NAME started. Access it at http://localhost:$PORT"
 }
@@ -216,10 +232,49 @@ function optimize_image {
   ./optimize-docker-build.sh --image-name "$IMAGE_NAME" $OPTIMIZE_FLAGS
 }
 
+# Function to get current version
+function get_current_version {
+  if docker ps -a | grep -q "$CONTAINER_NAME"; then
+    local current_image=$(docker inspect --format='{{.Config.Image}}' "$CONTAINER_NAME")
+    echo "$current_image"
+  else
+    echo "Container not running"
+  fi
+}
+
+# Function to get available versions
+function get_available_versions {
+  echo "Available versions:"
+  docker image ls "$IMAGE_NAME" --format "{{.Tag}}"
+}
+
+# Function to check if version exists
+function version_exists {
+  local version="$1"
+  docker manifest inspect "$IMAGE_NAME:$version" >/dev/null 2>&1
+  return $?
+}
+
+# Function to handle version management
+function handle_version {
+  echo "Current version: $(get_current_version)"
+  echo ""
+  get_available_versions
+}
+
 # Function to pull the latest Docker image
 function pull_image {
-  echo "Pulling latest Docker image: $IMAGE_NAME"
-  docker pull "$IMAGE_NAME"
+  if [ -n "$FORCE_VERSION" ]; then
+    if ! version_exists "$FORCE_VERSION"; then
+      echo "Error: Version $FORCE_VERSION does not exist"
+      exit 1
+    fi
+    echo "Pulling version $FORCE_VERSION of image: $IMAGE_NAME"
+    docker pull "$IMAGE_NAME:$FORCE_VERSION"
+  else
+    echo "Pulling latest image: $IMAGE_NAME:$IMAGE_TAG"
+    docker pull "$IMAGE_NAME:$IMAGE_TAG"
+  fi
 }
 
 # Function to verify and seed achievements
@@ -273,8 +328,10 @@ case "$ACTION" in
     show_logs
     ;;
   verify)
-    VERIFY_ACHIEVEMENTS="true"
     verify_achievements
+    ;;
+  version)
+    handle_version
     ;;
   *)
     echo "Unknown action: $ACTION"

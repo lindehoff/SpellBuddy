@@ -156,7 +156,13 @@ CREATE TABLE IF NOT EXISTS user_challenges (
   FOREIGN KEY (user_id) REFERENCES users(id),
   FOREIGN KEY (challenge_id) REFERENCES daily_challenges(id)
 );
-`;
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL UNIQUE,
+  value TEXT NOT NULL,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);`;
     
     // Write the schema to the migration file
     fs.writeFileSync(migrationFile, schemaSQL);
