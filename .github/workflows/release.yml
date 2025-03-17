@@ -7,6 +7,12 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  packages: write
+
 env:
   GHCR_REGISTRY: ghcr.io
   DOCKER_HUB_REGISTRY: docker.io
@@ -14,6 +20,8 @@ env:
   # Add placeholder API key for build
   OPENAI_API_KEY: sk-placeholder-key-for-build-process
   OPENAI_MODEL: gpt-4o-mini
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   test:
@@ -31,6 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -66,6 +75,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if npx semantic-release; then
             echo "release_created=true" >> $GITHUB_OUTPUT
@@ -76,6 +86,8 @@ jobs:
       - name: Update GitHub Release
         if: steps.release.outputs.release_created == 'true' || github.ref_type == 'tag'
         uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           files: |
