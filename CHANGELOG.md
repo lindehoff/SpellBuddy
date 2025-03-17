@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/lindehoff/SpellBuddy/compare/v1.2.0...v1.3.0) (2025-03-17)
+
+
+### Features
+
+* 🚀 ✨ enable Docker job on semantic release ([3fb2d87](https://github.com/lindehoff/SpellBuddy/commit/3fb2d87d4203199579aedbc7cd87d5ad228f2954))
+
 # [1.2.0](https://github.com/lindehoff/SpellBuddy/compare/v1.1.2...v1.2.0) (2025-03-17)
 
 
