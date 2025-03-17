@@ -50,7 +50,7 @@ function print_usage {
   echo "  $0 start                Start the container with default settings"
   echo "  $0 rebuild --debug      Rebuild and start the container with debug mode enabled"
   echo "  $0 upgrade              Pull the latest image and restart the container"
-  echo "  $0 upgrade --force-version v1.2.3  Upgrade/downgrade to a specific version"
+  echo "  $0 upgrade --force-version 1.2.3  Upgrade/downgrade to a specific version"
   echo "  $0 logs                 Show container logs"
   echo "  $0 verify               Verify and seed achievements if needed"
   echo "  $0 version              Show current version information"
@@ -277,6 +277,7 @@ function handle_version {
       echo "Version $FORCE_VERSION is available"
     else
       echo "Version $FORCE_VERSION is not available"
+      echo "Note: Use version numbers without 'v' prefix (e.g., 3.1.0)"
     fi
   fi
 }
@@ -287,8 +288,11 @@ function pull_image {
     echo "Attempting to pull version $FORCE_VERSION of image: $IMAGE_NAME"
     if docker pull "$IMAGE_NAME:$FORCE_VERSION"; then
       echo "Successfully pulled version $FORCE_VERSION"
+      # Update IMAGE_TAG to use the version
+      IMAGE_TAG="$FORCE_VERSION"
     else
       echo "Error: Failed to pull version $FORCE_VERSION. Please check if the version exists and you have proper access."
+      echo "Note: Use version numbers without 'v' prefix (e.g., 3.1.0)"
       exit 1
     fi
   else
