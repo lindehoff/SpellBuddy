@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/lindehoff/SpellBuddy/compare/v1.3.0...v1.3.1) (2025-03-17)
+
+
+### Bug Fixes
+
+* 🐛 improve semantic-release output handling ([051d190](https://github.com/lindehoff/SpellBuddy/commit/051d19040725e0af45aeacf84bf7ef3af1b7d2bc))
+
 # [1.3.0](https://github.com/lindehoff/SpellBuddy/compare/v1.2.0...v1.3.0) (2025-03-17)
 
 
