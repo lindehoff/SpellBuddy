@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  workflow_call:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Create .env.local file
+        run: |
+          echo "OPENAI_API_KEY=sk-placeholder-key-for-build-process" > .env.local
+          echo "OPENAI_MODEL=gpt-4o-mini" >> .env.local
+          echo "DATABASE_URL=file:./spellbuddy.db" >> .env.local
+          echo "JWT_SECRET=placeholder-jwt-secret-for-build" >> .env.local
+      
+      # Skip linting for now as per original config
+      # - name: Lint
+      #   run: npm run lint
+      
+      - name: Build
+        run: npm run build
+        env:
+          OPENAI_API_KEY: sk-placeholder-key-for-build-process
+          OPENAI_MODEL: gpt-4o-mini
+      
+      # Add tests when available
+      # - name: Run tests
+      #   run: npm test 

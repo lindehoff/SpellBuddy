@@ -16,18 +16,16 @@ env:
   OPENAI_MODEL: gpt-4o-mini
 
 jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
   release:
-    name: Release
+    needs: test
     runs-on: ubuntu-latest
     outputs:
-      released: ${{ steps.release.outputs.released }}
-      version: ${{ steps.release.outputs.version }}
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      packages: write
-
+      version: ${{ steps.get_version.outputs.version }}
+      release_created: ${{ steps.release.outputs.release_created }}
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,130 +41,80 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create .env.local file
-        run: |
-          echo "OPENAI_API_KEY=sk-placeholder-key-for-build-process" > .env.local
-          echo "OPENAI_MODEL=gpt-4o-mini" >> .env.local
-          echo "DATABASE_URL=file:./spellbuddy.db" >> .env.local
-          echo "JWT_SECRET=placeholder-jwt-secret-for-build" >> .env.local
-
-      - name: Verify the integrity of the project
+      - name: Verify project integrity
         run: npm run test-release
 
-      - name: Release
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            RELEASE_OUTPUT=$(npx semantic-release --dry-run)
+            if echo "$RELEASE_OUTPUT" | grep -q "The next release version is"; then
+              VERSION=$(echo "$RELEASE_OUTPUT" | grep "The next release version is" | sed 's/.*The next release version is \([0-9.]*\).*/\1/')
+            else
+              VERSION=$(npm pkg get version | tr -d '"')
+            fi
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version to be released: $VERSION"
+
+      - name: Create Release
         id: release
+        if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RELEASE_OUTPUT=$(npx semantic-release)
-          if echo "$RELEASE_OUTPUT" | grep -q "The next release version is"; then
-            VERSION=$(echo "$RELEASE_OUTPUT" | grep "The next release version is" | sed 's/.*The next release version is \([0-9.]*\).*/\1/')
-            echo "released=true" >> $GITHUB_OUTPUT
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if npx semantic-release; then
+            echo "release_created=true" >> $GITHUB_OUTPUT
           else
-            echo "released=false" >> $GITHUB_OUTPUT
+            echo "release_created=false" >> $GITHUB_OUTPUT
           fi
 
-  docker:
-    needs: release
-    if: |
-      startsWith(github.ref, 'refs/tags/') || 
-      (needs.release.outputs.released == 'true')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ startsWith(github.ref, 'refs/tags/') && github.ref || format('v{0}', needs.release.outputs.version) }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.DOCKER_HUB_REGISTRY }}
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}
-            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Extract version numbers
-        id: version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          MAJOR_MINOR=$(echo $VERSION | cut -d. -f1,2)
-          MAJOR=$(echo $VERSION | cut -d. -f1)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "major_minor=$MAJOR_MINOR" >> $GITHUB_OUTPUT
-          echo "major=$MAJOR" >> $GITHUB_OUTPUT
-
       - name: Update GitHub Release
+        if: steps.release.outputs.release_created == 'true' || github.ref_type == 'tag'
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ steps.get_version.outputs.version }}
           files: |
             LICENSE
             README.md
           body: |
-            ## 🚀 Release ${{ github.ref_name }}
+            ## 🚀 Release v${{ steps.get_version.outputs.version }}
             
             ### 🐳 Docker Images
             The following Docker image tags are available for this release:
 
             **GitHub Container Registry:**
             ```bash
-            ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.major_minor }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.major }}
+            ghcr.io/lindehoff/spellbuddy:${{ steps.get_version.outputs.version }}
+            ghcr.io/lindehoff/spellbuddy:latest
             ```
 
             **Docker Hub:**
             ```bash
-            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.major_minor }}
-            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.major }}
+            lindehoff/spellbuddy:${{ steps.get_version.outputs.version }}
+            lindehoff/spellbuddy:latest
             ```
             
             ### 📦 Installation
             To install this version, run:
             ```bash
-            ./manage-container.sh upgrade --force-version ${{ github.ref_name }}
+            ./manage-container.sh upgrade --force-version v${{ steps.get_version.outputs.version }}
             ```
             
             ### 🔄 Automatic Updates
             The application will automatically check for updates and notify administrators through the admin dashboard.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+
+  docker:
+    needs: release
+    if: needs.release.outputs.release_created == 'true' || github.ref_type == 'tag'
+    uses: ./.github/workflows/docker-build.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+      push_image: true
+    secrets:
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }} 
