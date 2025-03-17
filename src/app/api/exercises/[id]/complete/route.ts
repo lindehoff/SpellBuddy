@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as service from '@/lib/service';
 import { ApiResponse } from '@/types';
 
-// POST /api/exercises/[id]/spoken - Submit spoken translation
+// POST /api/exercises/[id]/complete - Mark exercise as completed
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -20,8 +20,7 @@ export async function POST(
       return NextResponse.json(response, { status: 400 });
     }
 
-    const { spokenText } = await request.json();
-    await service.saveSpokenTranslation(exerciseId, spokenText);
+    await service.completeExercise(exerciseId);
     
     const response: ApiResponse<null> = {
       success: true,
@@ -30,11 +29,11 @@ export async function POST(
     
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error saving spoken translation:', error);
+    console.error('Error completing exercise:', error);
     
     const response: ApiResponse = {
       success: false,
-      error: 'Failed to save spoken translation'
+      error: 'Failed to complete exercise'
     };
     
     return NextResponse.json(response, { status: 500 });

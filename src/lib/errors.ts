@@ -1,11 +1,11 @@
 export class APIError extends Error {
-  public status: number;
+  public statusCode: number;
   public type: string;
 
-  constructor(message: string, status = 500, type = 'InternalServerError') {
+  constructor(message: string, statusCode: number = 500, type = 'InternalServerError') {
     super(message);
     this.name = 'APIError';
-    this.status = status;
+    this.statusCode = statusCode;
     this.type = type;
   }
 }

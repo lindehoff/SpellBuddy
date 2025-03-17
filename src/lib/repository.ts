@@ -2,6 +2,19 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { db, schema } from './db';
 import { UserPreferences } from './service';
 
+export interface Exercise {
+  id: number;
+  userId: number;
+  originalText: string;
+  translatedText: string;
+  userTranslation?: string;
+  spokenTranslation?: string;
+  createdAt: number;
+  completedAt?: number;
+  exerciseDifficulty: number;
+  experienceAwarded?: number;
+}
+
 // User repository functions
 export async function getUserById(userId: number) {
   const result = await db.select()
@@ -286,4 +299,61 @@ export async function getRecentAchievements(userId: number, limit = 5) {
     .where(eq(schema.userAchievements.userId, userId))
     .orderBy(desc(schema.userAchievements.unlockedAt))
     .limit(limit);
+}
+
+export async function getExerciseById(exerciseId: number): Promise<Exercise | null> {
+  const result = await db.select()
+    .from(schema.exercises)
+    .where(eq(schema.exercises.id, exerciseId))
+    .limit(1);
+  
+  if (!result.length) return null;
+  
+  const exercise = result[0];
+  
+  // Convert snake_case to camelCase and handle null values
+  return {
+    id: exercise.id,
+    userId: exercise.userId,
+    originalText: exercise.originalText || '',
+    translatedText: exercise.translatedText || '',
+    userTranslation: exercise.userTranslation || undefined,
+    spokenTranslation: exercise.spokenTranslation || undefined,
+    createdAt: exercise.createdAt || Date.now(),
+    completedAt: exercise.completedAt || undefined,
+    exerciseDifficulty: exercise.exerciseDifficulty || 1,
+    experienceAwarded: exercise.experienceAwarded || undefined
+  };
+}
+
+export async function updateExercise(exerciseId: number, updates: Partial<Exercise>): Promise<void> {
+  await db.update(schema.exercises)
+    .set(updates)
+    .where(eq(schema.exercises.id, exerciseId));
+}
+
+export async function updateUserExperience(userId: number, experiencePoints: number): Promise<void> {
+  // Get current experience points
+  const result = await db.select({ experiencePoints: schema.users.experiencePoints })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+  
+  if (!result.length) {
+    throw new Error('User not found');
+  }
+  
+  // Calculate new total
+  const newTotal = result[0].experiencePoints + experiencePoints;
+  
+  // Calculate new level
+  const currentLevel = Math.floor(Math.sqrt(newTotal / 100));
+  
+  // Update user's experience points and level
+  await db.update(schema.users)
+    .set({
+      experiencePoints: newTotal,
+      level: currentLevel
+    })
+    .where(eq(schema.users.id, userId));
 } 

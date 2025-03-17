@@ -18,8 +18,12 @@ export async function POST() {
     // Get the current user (will throw if not authenticated)
     const user = await requireAuth();
     
+    console.log(`Creating exercise for user ${user.id}`);
+    
     // Create a new exercise
     const exercise = await service.createNewExercise(user.id);
+    
+    console.log(`Exercise created successfully with ID: ${exercise.id}`);
     
     const response: ApiResponse<unknown> = {
       success: true,
@@ -33,7 +37,7 @@ export async function POST() {
         success: false,
         error: error.message
       };
-      return NextResponse.json(response, { status: error.status });
+      return NextResponse.json(response, { status: error instanceof AuthenticationError ? 401 : 500 });
     }
     
     console.error('Error creating exercise:', error);
@@ -69,7 +73,7 @@ export async function GET() {
         success: false,
         error: error.message
       };
-      return NextResponse.json(response, { status: error.status });
+      return NextResponse.json(response, { status: error instanceof AuthenticationError ? 401 : 500 });
     }
 
     console.error('Error generating exercise:', error);

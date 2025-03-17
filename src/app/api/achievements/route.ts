@@ -36,15 +36,17 @@ export async function GET() {
     }
     
     // If user is authenticated, get their unlocked achievements
-    const unlockedMap = new Map<string, { unlockedAt: Date; isNew: boolean }>();
+    const unlockedMap = new Map<number, { unlockedAt: number; isNew: boolean }>();
     if (user) {
       const userUnlocked = await db.select()
         .from(userAchievements)
         .where(eq(userAchievements.userId, user.id));
       
+      console.log(`Found ${userUnlocked.length} unlocked achievements for user ${user.id}`);
+      
       // Create a map of unlocked achievements
       userUnlocked.forEach(ua => {
-        unlockedMap.set(String(ua.achievementId), {
+        unlockedMap.set(ua.achievementId, {
           unlockedAt: ua.unlockedAt,
           isNew: ua.isNew === 1,
         });

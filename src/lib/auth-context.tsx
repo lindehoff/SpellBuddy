@@ -30,7 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
           const data = await response.json();
-          setUser(data.user);
+          if (data.success && data.data.user) {
+            setUser(data.data.user);
+          }
         }
       } catch (error) {
         console.error('Failed to load user:', error);
@@ -55,12 +57,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
       }
 
       const data = await response.json();
-      setUser(data.user);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Login failed');
+      }
+      
+      // Set user from the response data
+      setUser(data.data.user);
+      
+      // Reload the page to ensure proper hydration
+      window.location.href = '/';
+      
     } catch (error) {
       console.error('Login error:', error);
       throw error;

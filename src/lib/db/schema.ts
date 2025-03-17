@@ -10,6 +10,9 @@ export const users = sqliteTable("users", {
   lastLoginAt: integer("last_login_at"),
   experiencePoints: integer("experience_points").notNull().default(0),
   level: integer("level").notNull().default(1),
+  currentStreak: integer("current_streak").notNull().default(0),
+  longestStreak: integer("longest_streak").notNull().default(0),
+  lastActivityDate: integer("last_activity_date"),
 });
 
 // Table for storing user preferences

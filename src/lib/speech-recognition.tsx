@@ -51,58 +51,125 @@ export const useSpeechRecognition = () => {
   // Initialize on client side only
   useEffect(() => {
     // Check if browser supports speech recognition
-    setIsSupported(browserSupportsSpeechRecognition());
+    const supported = browserSupportsSpeechRecognition();
+    setIsSupported(supported);
     
-    // Create instance if supported
-    if (browserSupportsSpeechRecognition()) {
-      const instance = createRecognitionInstance();
-      if (instance) {
-        instance.continuous = true;
-        instance.interimResults = true;
-        instance.lang = 'en-US';
-        
-        // Set up event handlers
-        instance.onresult = (event) => {
-          const current = event.resultIndex;
-          const transcriptResult = event.results[current][0].transcript;
-          setTranscript((prev) => {
-            // If this is a continuation, append; otherwise replace
-            if (event.results[current].isFinal) {
-              return prev + ' ' + transcriptResult;
+    if (supported) {
+      try {
+        const instance = createRecognitionInstance();
+        if (instance) {
+          instance.continuous = false; // Changed to false to better handle single utterances
+          instance.interimResults = true;
+          instance.lang = 'en-US';
+          
+          // Set up event handlers
+          instance.onresult = (event) => {
+            let finalTranscript = '';
+            let interimTranscript = '';
+            
+            for (let i = 0; i < event.results.length; i++) {
+              const result = event.results[i];
+              if (result.isFinal) {
+                finalTranscript += result[0].transcript;
+              } else {
+                interimTranscript += result[0].transcript;
+              }
             }
-            return prev;
-          });
-        };
-        
-        instance.onerror = (event) => {
-          console.error('Speech recognition error', event);
-          setListening(false);
-        };
-        
-        instance.onend = () => {
-          setListening(false);
-        };
-        
-        setRecognition(instance);
+            
+            setTranscript(finalTranscript || interimTranscript);
+          };
+          
+          instance.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            setListening(false);
+          };
+          
+          instance.onend = () => {
+            console.log('Speech recognition ended');
+            setListening(false);
+          };
+          
+          setRecognition(instance);
+        }
+      } catch (err) {
+        console.error('Error initializing speech recognition:', err);
+        setIsSupported(false);
       }
     }
     
     // Cleanup
     return () => {
       if (recognition) {
-        recognition.stop();
+        try {
+          recognition.stop();
+        } catch (err) {
+          console.error('Error stopping recognition during cleanup:', err);
+        }
       }
     };
-  }, [recognition]);
+  }, []); // Removed recognition from dependencies to prevent recreation
   
   // Start listening
   const startListening = useCallback(() => {
     if (recognition && !listening) {
       try {
+        console.log('Starting speech recognition...');
         recognition.start();
         setListening(true);
       } catch (err) {
-        console.error('Error starting speech recognition', err);
+        console.error('Error starting speech recognition:', err);
+        setListening(false);
+        
+        // Try to recreate the recognition instance if it failed
+        try {
+          const instance = createRecognitionInstance();
+          if (instance) {
+            instance.continuous = false;
+            instance.interimResults = true;
+            instance.lang = 'en-US';
+            
+            instance.onresult = (event) => {
+              let finalTranscript = '';
+              let interimTranscript = '';
+              
+              for (let i = 0; i < event.results.length; i++) {
+                const result = event.results[i];
+                if (result.isFinal) {
+                  finalTranscript += result[0].transcript;
+                } else {
+                  interimTranscript += result[0].transcript;
+                }
+              }
+              
+              setTranscript(finalTranscript || interimTranscript);
+            };
+            
+            instance.onerror = (event) => {
+              console.error('Speech recognition error:', event.error);
+              setListening(false);
+            };
+            
+            instance.onend = () => {
+              console.log('Speech recognition ended');
+              setListening(false);
+            };
+            
+            setRecognition(instance);
+            
+            // Try to start again
+            setTimeout(() => {
+              try {
+                instance.start();
+                setListening(true);
+              } catch (startErr) {
+                console.error('Error starting recreated speech recognition:', startErr);
+                setListening(false);
+              }
+            }, 100);
+          }
+        } catch (recreateErr) {
+          console.error('Error recreating speech recognition:', recreateErr);
+        }
       }
     }
   }, [recognition, listening]);
@@ -110,8 +177,14 @@ export const useSpeechRecognition = () => {
   // Stop listening
   const stopListening = useCallback(() => {
     if (recognition && listening) {
-      recognition.stop();
-      setListening(false);
+      try {
+        console.log('Stopping speech recognition...');
+        recognition.stop();
+        setListening(false);
+      } catch (err) {
+        console.error('Error stopping speech recognition:', err);
+        setListening(false);
+      }
     }
   }, [recognition, listening]);
   

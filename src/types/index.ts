@@ -1,7 +1,12 @@
+export interface AdminData {
+  id: number;
+  username: string;
+}
+
 export interface ApiResponse<T = unknown> {
-  success: boolean
-  data?: T
-  error?: string
+  success: boolean;
+  data?: T;
+  error?: string;
 }
 
 export interface UserPreferences {

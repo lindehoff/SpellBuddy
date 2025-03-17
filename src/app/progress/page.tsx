@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Progress } from '@/lib/service';
 import { useAuth } from '@/lib/auth-context';
 import AchievementDisplay from '@/components/AchievementDisplay';
+import Link from 'next/link';
 
 export default function ProgressPage() {
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -12,6 +13,7 @@ export default function ProgressPage() {
   const [error, setError] = useState('');
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const fetchedRef = useRef(false);
   
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -24,8 +26,12 @@ export default function ProgressPage() {
   useEffect(() => {
     async function fetchProgress() {
       try {
+        // Skip if we've already fetched or are currently loading
+        if (fetchedRef.current || !user) return;
+        
         setLoading(true);
         setProgress(null); // Clear previous progress data while loading
+        fetchedRef.current = true;
         
         const response = await fetch('/api/progress');
         
@@ -40,10 +46,17 @@ export default function ProgressPage() {
         }
         
         const data = await response.json();
-        setProgress(data);
+        
+        // Check if the response has the expected format
+        if (data.success && data.data) {
+          setProgress(data.data);
+        } else {
+          throw new Error('Invalid response format');
+        }
       } catch (err) {
         console.error('Error fetching progress:', err);
         setError('Failed to load progress data. Please try again.');
+        fetchedRef.current = false; // Reset so we can try again
       } finally {
         setLoading(false);
       }
@@ -52,6 +65,11 @@ export default function ProgressPage() {
     if (user) {
       fetchProgress();
     }
+    
+    // Cleanup function to reset the ref when the component unmounts
+    return () => {
+      fetchedRef.current = false;
+    };
   }, [user, router]);
   
   // Mark achievements as seen
@@ -59,13 +77,23 @@ export default function ProgressPage() {
     if (!achievementIds.length) return;
     
     try {
-      await fetch('/api/achievements/seen', {
+      const response = await fetch('/api/achievements/seen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ achievementIds }),
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to mark achievements as seen');
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to mark achievements as seen');
+      }
     } catch (err) {
       console.error('Error marking achievements as seen:', err);
     }
@@ -186,9 +214,12 @@ export default function ProgressPage() {
         <div className="glass-card p-8 rounded-xl mb-8">
           <h2 className="text-xl font-bold gradient-text mb-4">Learning Tips</h2>
           <ul className="list-disc pl-6 space-y-3">
-            {progress.tips.map((tip, index) => (
+            {progress.tips && progress.tips.map((tip, index) => (
               <li key={index} className="opacity-90">{tip}</li>
             ))}
+            {(!progress.tips || progress.tips.length === 0) && (
+              <li className="opacity-90">Practice regularly to improve your spelling skills.</li>
+            )}
           </ul>
         </div>
         
@@ -203,6 +234,18 @@ export default function ProgressPage() {
           >
             Continue Practicing
           </button>
+        </div>
+        
+        <div className="mt-10 text-center">
+          <Link
+            href="/achievements"
+            className="text-cyan-400 hover:text-cyan-300 transition-colors text-sm font-medium flex items-center"
+          >
+            View All Achievements
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
       </div>
     </div>
