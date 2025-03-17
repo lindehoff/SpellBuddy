@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/lindehoff/SpellBuddy/compare/v1.1.2...v1.2.0) (2025-03-17)
+
+
+### Features
+
+* **admin:** ✨ Complete user admin functionality and fix various issues 🛠️ ([82963ce](https://github.com/lindehoff/SpellBuddy/commit/82963ced27f8000ff09f1407daff869949f681f6))
+
 ## [1.1.2](https://github.com/lindehoff/SpellBuddy/compare/v1.1.1...v1.1.2) (2025-03-17)
 
 
