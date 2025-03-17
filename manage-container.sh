@@ -51,7 +51,7 @@ function print_usage {
   echo "  --container-name NAME   Container name (default: spellbuddy)"
   echo "  --image-name NAME       Docker image name without tag (default: lindehoff/spellbuddy)"
   echo "  --image-tag TAG        Docker image tag (default: latest)"
-  echo "  --port PORT             Host port to map to container port 3000 (default: 9928)"
+  echo "  --port PORT             Host port to map to container port 9928 (default: 9928)"
   echo "  --data-dir DIR          Host directory to mount as /app/data (default: /volume1/docker/spellbuddy/data)"
   echo "  --env-file FILE         Environment file to mount (default: /volume1/docker/spellbuddy/.env.local)"
   echo "  --debug                 Enable debug mode with additional logging"
@@ -251,13 +251,14 @@ function start_container {
   echo "Starting container: $CONTAINER_NAME"
   if ! docker run -d \
     --name "$CONTAINER_NAME" \
-    -p "$PORT:3000" \
+    -p "$PORT:9928" \
     $DEBUG_ENV \
     $VERIFY_ENV \
     -e OPENAI_API_KEY="$OPENAI_API_KEY" \
     -e JWT_SECRET="$JWT_SECRET" \
     -e OPENAI_MODEL="$OPENAI_MODEL" \
     -e DATABASE_URL="file:/app/data/sqlite.db" \
+    -e PORT="9928" \
     -v "$DATA_DIR:/app/data:rw" \
     -v "$ENV_FILE:/app/.env.local:ro" \
     --restart always \
@@ -268,7 +269,20 @@ function start_container {
     docker rm "$CONTAINER_NAME" 2>/dev/null
     exit 1
   fi
-    
+
+  echo "Container started. Running database migrations..."
+  # Wait a bit for the container to fully start
+  sleep 5
+  
+  # Run database migrations
+  if ! docker exec "$CONTAINER_NAME" npx prisma migrate deploy; then
+    echo "Error: Failed to run database migrations. Checking container logs..."
+    docker logs "$CONTAINER_NAME"
+    docker rm "$CONTAINER_NAME" 2>/dev/null
+    exit 1
+  fi
+  
+  echo "Database migrations completed successfully."
   echo "Container $CONTAINER_NAME started. Access it at http://localhost:$PORT"
 }
 
