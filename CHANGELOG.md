@@ -1,3 +1,18 @@
+# [1.1.0](https://github.com/lindehoff/SpellBuddy/compare/v1.0.0...v1.1.0) (2025-03-17)
+
+
+### Bug Fixes
+
+* **release:** improve test-release script reliability ([8ff3fc1](https://github.com/lindehoff/SpellBuddy/commit/8ff3fc13e35022020e7d5ed3d1f99b0079cc69e5))
+* **release:** improve test-release script reliability ([5341093](https://github.com/lindehoff/SpellBuddy/commit/5341093181897b9fdd16027dfde02db5511ac318))
+* **release:** update semantic-release and commitlint config to handle release commits ([bb3a5e2](https://github.com/lindehoff/SpellBuddy/commit/bb3a5e2880b54c71b449d3353a42b99ffde44a2f))
+
+
+### Features
+
+* **admin:** 📚 Add admin implementation guides and fix release workflow ([e4b95fe](https://github.com/lindehoff/SpellBuddy/commit/e4b95fe23fa47bb58ac17c6550f32b4d98487c40))
+* **admin:** 🛡️ Add admin authentication system and dashboard skeleton ([746b9ea](https://github.com/lindehoff/SpellBuddy/commit/746b9eac45821f138b149bf640e1cad9997478d5))
+
 # 1.0.0 (2025-03-15)
 
 
