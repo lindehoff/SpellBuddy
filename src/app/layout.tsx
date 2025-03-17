@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <Script 
           src="https://unpkg.com/regenerator-runtime@0.13.11/runtime.js"

@@ -83,9 +83,12 @@ export async function getOrCreateWord(word: string) {
     return existing[0];
   }
   
+  // Use server timestamp for consistency
+  const timestamp = Math.floor(new Date().getTime() / 1000);
+  
   const result = await db.insert(schema.words).values({
     word,
-    createdAt: Math.floor(Date.now() / 1000),
+    createdAt: timestamp,
   }).returning({ id: schema.words.id });
   
   return { id: result[0]?.id, word, correctCount: 0, incorrectCount: 0 };

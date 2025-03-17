@@ -16,6 +16,42 @@ enum PracticeStep {
   PracticeWords
 }
 
+// Main component that ensures client-side only rendering for speech recognition
+export default function PracticePage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+  
+  // Render loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-4 border-cyan-400 rounded-full border-t-transparent mx-auto mb-4"></div>
+          <p className="text-xl font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Render nothing while redirecting
+  if (!user) {
+    return null;
+  }
+  
+  return (
+    <SpeechRecognitionProvider>
+      <PracticePageInner />
+    </SpeechRecognitionProvider>
+  );
+}
+
 // Create a component wrapper for speech recognition
 function SpeechRecognitionProvider({ children }: { children: React.ReactNode }) {
   const [hasMounted, setHasMounted] = useState(false);
@@ -24,7 +60,6 @@ function SpeechRecognitionProvider({ children }: { children: React.ReactNode }) 
     setHasMounted(true);
   }, []);
 
-  // Only render children on the client
   if (!hasMounted) {
     return <div className="flex justify-center py-4 opacity-80">Loading speech recognition...</div>;
   }
@@ -46,81 +81,8 @@ function PracticePageInner() {
   const [error, setError] = useState('');
   const [isLoadingExercise, setIsLoadingExercise] = useState(true);
   const [currentWordAttempts, setCurrentWordAttempts] = useState(0);
-  const [dictationEnabled, setDictationEnabled] = useState(() => {
-    // Initialize from localStorage if available, default to true
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dictationEnabled');
-      return saved !== null ? saved === 'true' : true;
-    }
-    return true;
-  });
-  
-  // Save dictation preference to localStorage when it changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('dictationEnabled', dictationEnabled.toString());
-    }
-  }, [dictationEnabled]);
-  
-  // Detect and prevent dictation in the textarea
-  useEffect(() => {
-    if (step === PracticeStep.WriteTranslation) {
-      // Function to detect rapid text input that might be from dictation
-      const handleTextareaInput = (e: Event) => {
-        const target = e.target as HTMLTextAreaElement;
-        const currentLength = target.value.length;
-        const previousLength = writtenTranslation.length;
-        
-        // If a large amount of text is added at once, it might be dictation
-        if (currentLength - previousLength > 15) {
-          // Show a warning
-          setError('Please type your translation manually. Dictation is not allowed in practice mode.');
-          
-          // Clear the error after 3 seconds
-          setTimeout(() => setError(''), 3000);
-        }
-      };
-      
-      // Add event listener to detect dictation
-      const textarea = document.querySelector('textarea');
-      if (textarea) {
-        textarea.addEventListener('input', handleTextareaInput);
-        
-        // Disable speech input methods
-        const disableSpeechInput = () => {
-          // This helps prevent some mobile dictation features
-          if (document.activeElement === textarea) {
-            (document.activeElement as HTMLElement).blur();
-            setTimeout(() => textarea.focus(), 10);
-          }
-        };
-        
-        // Listen for speech input start events
-        textarea.addEventListener('webkitspeechstart', disableSpeechInput);
-        textarea.addEventListener('speechstart', disableSpeechInput);
-        
-        // Periodically check for rapid input changes that might indicate dictation
-        const intervalCheck = setInterval(() => {
-          if (document.activeElement === textarea) {
-            const currentVal = textarea.value;
-            if (currentVal.length > writtenTranslation.length + 15) {
-              setWrittenTranslation(currentVal.substring(0, writtenTranslation.length));
-              setError('Please type your translation manually. Dictation is not allowed in practice mode.');
-              setTimeout(() => setError(''), 3000);
-            }
-          }
-        }, 500);
-        
-        // Clean up
-        return () => {
-          textarea.removeEventListener('input', handleTextareaInput);
-          textarea.removeEventListener('webkitspeechstart', disableSpeechInput);
-          textarea.removeEventListener('speechstart', disableSpeechInput);
-          clearInterval(intervalCheck);
-        };
-      }
-    }
-  }, [step, writtenTranslation]);
+  const [mounted, setMounted] = useState(false);
+  const [dictationEnabled, setDictationEnabled] = useState(true);
   
   // Use our custom speech recognition hook
   const {
@@ -131,22 +93,38 @@ function PracticePageInner() {
     resetTranscript,
     browserSupportsSpeechRecognition
   } = useSpeechRecognition();
-
+  
+  // Initialize dictation preference after mount
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem('dictationEnabled');
+    if (saved !== null) {
+      setDictationEnabled(saved === 'true');
+    }
+  }, []);
+  
+  // Save dictation preference to localStorage when it changes
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem('dictationEnabled', dictationEnabled.toString());
+  }, [dictationEnabled, mounted]);
+  
   // Load a new exercise when the component mounts
   useEffect(() => {
     async function loadExercise() {
+      if (!user) return;
+      
       try {
         setIsLoadingExercise(true);
-        setExercise(null); // Clear previous exercise while loading
-        resetTranscript(); // Clear any previous transcript
-        setWrittenTranslation(''); // Clear any previous written translation
+        setExercise(null);
+        resetTranscript();
+        setWrittenTranslation('');
         
         const response = await fetch('/api/exercises', {
           method: 'POST',
         });
         
         if (response.status === 401) {
-          // Redirect to login if not authenticated
           router.push('/login');
           return;
         }
@@ -166,16 +144,66 @@ function PracticePageInner() {
       }
     }
     
-    if (user) {
-      loadExercise();
-    }
+    loadExercise();
   }, [user, router, resetTranscript]);
-
+  
+  // Handle textarea events for dictation prevention
+  useEffect(() => {
+    const textarea = document.querySelector('textarea');
+    if (!textarea || step !== PracticeStep.WriteTranslation) return;
+    
+    const handleTextareaInput = (e: Event) => {
+      const target = e.target as HTMLTextAreaElement;
+      const currentLength = target.value.length;
+      const previousLength = writtenTranslation.length;
+      
+      if (currentLength - previousLength > 15) {
+        setError('Please type your translation manually. Dictation is not allowed in practice mode.');
+        setTimeout(() => setError(''), 3000);
+      }
+    };
+    
+    textarea.addEventListener('input', handleTextareaInput);
+    
+    const disableSpeechInput = () => {
+      if (document.activeElement === textarea) {
+        (document.activeElement as HTMLElement).blur();
+        setTimeout(() => textarea.focus(), 10);
+      }
+    };
+    
+    textarea.addEventListener('webkitspeechstart', disableSpeechInput);
+    textarea.addEventListener('speechstart', disableSpeechInput);
+    
+    const intervalCheck = setInterval(() => {
+      if (document.activeElement === textarea) {
+        const currentVal = textarea.value;
+        if (currentVal.length > writtenTranslation.length + 15) {
+          setWrittenTranslation(currentVal.substring(0, writtenTranslation.length));
+          setError('Please type your translation manually. Dictation is not allowed in practice mode.');
+          setTimeout(() => setError(''), 3000);
+        }
+      }
+    }, 500);
+    
+    return () => {
+      textarea.removeEventListener('input', handleTextareaInput);
+      textarea.removeEventListener('webkitspeechstart', disableSpeechInput);
+      textarea.removeEventListener('speechstart', disableSpeechInput);
+      clearInterval(intervalCheck);
+    };
+  }, [step, writtenTranslation]);
+  
   // Update spoken translation when transcript changes
   useEffect(() => {
     // We're just using transcript directly now, no need for a separate state
   }, [transcript, step]);
-
+  
+  // Render null until mounted to prevent hydration issues
+  if (!mounted) {
+    return null;
+  }
+  
   // Stop speech recognition and save the spoken translation
   const handleStopListening = async () => {
     stopListening();
@@ -686,39 +714,5 @@ function PracticePageInner() {
         {renderStepContent()}
       </div>
     </div>
-  );
-}
-
-// Main component that ensures client-side only rendering for speech recognition
-export default function PracticePage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-  
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
-        <div className="text-center">
-          <div className="animate-spin h-10 w-10 border-4 border-cyan-400 rounded-full border-t-transparent mx-auto mb-4"></div>
-          <p className="text-xl font-medium">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return null; // Will redirect in the useEffect
-  }
-  
-  return (
-    <SpeechRecognitionProvider>
-      <PracticePageInner />
-    </SpeechRecognitionProvider>
   );
 } 
