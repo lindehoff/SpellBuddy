@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/lindehoff/SpellBuddy/compare/v1.1.0...v1.1.1) (2025-03-17)
+
+
+### Bug Fixes
+
+* **ci:** update workflows to handle Docker image builds for releases ([ca8c437](https://github.com/lindehoff/SpellBuddy/commit/ca8c4375e35ba2388c26915f3aafeb500e2fbe81))
+
 # [1.1.0](https://github.com/lindehoff/SpellBuddy/compare/v1.0.0...v1.1.0) (2025-03-17)
 
 
