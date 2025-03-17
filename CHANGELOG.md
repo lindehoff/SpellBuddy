@@ -1,3 +1,10 @@
+## [3.2.1](https://github.com/lindehoff/SpellBuddy/compare/v3.2.0...v3.2.1) (2025-03-17)
+
+
+### Bug Fixes
+
+* **script:** improve environment and container handling ([5a62d73](https://github.com/lindehoff/SpellBuddy/commit/5a62d73c7cbd93eb17e38e9cd6bfd17c730fd139))
+
 # [3.2.0](https://github.com/lindehoff/SpellBuddy/compare/v3.1.0...v3.2.0) (2025-03-17)
 
 
