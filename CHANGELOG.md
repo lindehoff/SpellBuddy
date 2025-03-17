@@ -1,3 +1,10 @@
+## [3.2.2](https://github.com/lindehoff/SpellBuddy/compare/v3.2.1...v3.2.2) (2025-03-17)
+
+
+### Bug Fixes
+
+* **script:** add database migrations and fix port mapping ([05e2117](https://github.com/lindehoff/SpellBuddy/commit/05e211781961fe37c224f4cbb36ec004ec433906))
+
 ## [3.2.1](https://github.com/lindehoff/SpellBuddy/compare/v3.2.0...v3.2.1) (2025-03-17)
 
 
