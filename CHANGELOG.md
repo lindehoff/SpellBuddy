@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/lindehoff/SpellBuddy/compare/v3.0.0...v3.1.0) (2025-03-17)
+
+
+### Features
+
+* improve container management and platform support ([dfc28a1](https://github.com/lindehoff/SpellBuddy/commit/dfc28a1c809298a102bdc7d36e8d7cad2979930c))
+
 # [3.0.0](https://github.com/lindehoff/SpellBuddy/compare/v2.0.0...v3.0.0) (2025-03-17)
 
 
