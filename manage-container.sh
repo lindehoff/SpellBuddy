@@ -8,8 +8,22 @@ CONTAINER_NAME="spellbuddy"
 IMAGE_NAME="lindehoff/spellbuddy"
 IMAGE_TAG="latest"
 PORT="9928"
-DATA_DIR="/volume1/docker/spellbuddy/data"
-ENV_FILE="/volume1/docker/spellbuddy/.env.local"
+
+# Set default data directory based on OS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS
+  DATA_DIR="$HOME/.spellbuddy/data"
+  ENV_FILE="$HOME/.spellbuddy/.env.local"
+elif [[ -d "/volume1" ]]; then
+  # Synology NAS
+  DATA_DIR="/volume1/docker/spellbuddy/data"
+  ENV_FILE="/volume1/docker/spellbuddy/.env.local"
+else
+  # Default Linux/other
+  DATA_DIR="$HOME/.spellbuddy/data"
+  ENV_FILE="$HOME/.spellbuddy/.env.local"
+fi
+
 DEBUG_MODE="false"
 ACTION="start"  # Default action: start the container
 OPTIMIZE_FLAGS=""
@@ -119,6 +133,56 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Function to ensure environment setup
+function ensure_environment {
+  # Create base directory if it doesn't exist
+  local base_dir=$(dirname "$DATA_DIR")
+  if [ ! -d "$base_dir" ]; then
+    echo "Creating base directory: $base_dir"
+    mkdir -p "$base_dir"
+    chmod 755 "$base_dir"
+  fi
+
+  # Create data directory if it doesn't exist
+  if [ ! -d "$DATA_DIR" ]; then
+    echo "Creating data directory: $DATA_DIR"
+    mkdir -p "$DATA_DIR"
+  fi
+
+  # Ensure proper permissions on data directory
+  echo "Setting proper permissions on data directory"
+  chmod 777 "$DATA_DIR"
+
+  # Create env directory if it doesn't exist
+  local env_dir=$(dirname "$ENV_FILE")
+  if [ ! -d "$env_dir" ]; then
+    echo "Creating environment directory: $env_dir"
+    mkdir -p "$env_dir"
+    chmod 755 "$env_dir"
+  fi
+
+  # Handle .env.local file
+  if [ ! -f "$ENV_FILE" ]; then
+    echo "Creating environment file: $ENV_FILE"
+    if [ -f ".env.local" ]; then
+      echo "Copying existing .env.local to $ENV_FILE"
+      cp ".env.local" "$ENV_FILE"
+    else
+      echo "Creating new .env.local with default values"
+      cat > "$ENV_FILE" << EOL
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
+OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+JWT_SECRET=${JWT_SECRET:-default_jwt_secret_for_development}
+DATABASE_URL=file:/app/data/sqlite.db
+EOL
+    fi
+    chmod 600 "$ENV_FILE"
+  fi
+}
+
+# Ensure environment is set up before loading variables
+ensure_environment
+
 # Load environment variables from .env.local if it exists
 if [ -f "$ENV_FILE" ]; then
   echo "Loading environment variables from $ENV_FILE"
@@ -174,6 +238,9 @@ function start_container {
     stop_container
   fi
   
+  # Ensure environment is set up
+  ensure_environment
+  
   # Add verification flag if needed
   VERIFY_ENV=""
   if [ "$VERIFY_ACHIEVEMENTS" = "true" ]; then
@@ -182,7 +249,7 @@ function start_container {
   fi
   
   echo "Starting container: $CONTAINER_NAME"
-  docker run -d \
+  if ! docker run -d \
     --name "$CONTAINER_NAME" \
     -p "$PORT:3000" \
     $DEBUG_ENV \
@@ -194,7 +261,13 @@ function start_container {
     -v "$DATA_DIR:/app/data:rw" \
     -v "$ENV_FILE:/app/.env.local:ro" \
     --restart always \
-    "$IMAGE_NAME:$IMAGE_TAG"
+    "$IMAGE_NAME:$IMAGE_TAG"; then
+    
+    echo "Error: Failed to start container. Checking container logs..."
+    docker logs "$CONTAINER_NAME"
+    docker rm "$CONTAINER_NAME" 2>/dev/null
+    exit 1
+  fi
     
   echo "Container $CONTAINER_NAME started. Access it at http://localhost:$PORT"
 }
