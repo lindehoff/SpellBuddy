@@ -12,12 +12,6 @@ interface AppSettings {
   debugMode: boolean;
 }
 
-interface VersionInfo {
-  version: string;
-  releaseDate: string;
-  description: string;
-}
-
 export default function AdminSettings() {
   const router = useRouter();
   const [settings, setSettings] = useState<AppSettings | null>(null);

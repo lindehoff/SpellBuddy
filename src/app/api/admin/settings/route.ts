@@ -4,7 +4,7 @@ import { ApiResponse } from '@/types';
 import { APIError } from '@/lib/errors';
 import { db } from '@/lib/db';
 import { appSettings } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 

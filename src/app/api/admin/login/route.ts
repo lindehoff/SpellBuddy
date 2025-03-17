@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { loginAdmin } from '@/lib/admin-auth';
 import { ApiResponse } from '@/types';
 import { APIError, ValidationError } from '@/lib/errors';
-import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {

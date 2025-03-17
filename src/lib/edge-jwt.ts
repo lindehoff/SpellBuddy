@@ -1,4 +1,5 @@
-import { createHmac } from 'crypto';
+// Remove the createHmac import if it's not being used
+// Add any necessary imports for JWT functionality
 
 interface TokenPayload {
   username: string;
