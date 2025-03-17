@@ -251,29 +251,52 @@ function get_available_versions {
 # Function to check if version exists
 function version_exists {
   local version="$1"
-  docker manifest inspect "$IMAGE_NAME:$version" >/dev/null 2>&1
-  return $?
+  # Try to pull the manifest first
+  if docker pull "$IMAGE_NAME:$version" >/dev/null 2>&1; then
+    return 0
+  else
+    # If pull fails, check if we have it locally
+    if docker image inspect "$IMAGE_NAME:$version" >/dev/null 2>&1; then
+      return 0
+    fi
+    return 1
+  fi
 }
 
 # Function to handle version management
 function handle_version {
   echo "Current version: $(get_current_version)"
   echo ""
+  echo "Available versions locally:"
   get_available_versions
+  
+  if [ -n "$FORCE_VERSION" ]; then
+    echo ""
+    echo "Checking availability of version $FORCE_VERSION..."
+    if version_exists "$FORCE_VERSION"; then
+      echo "Version $FORCE_VERSION is available"
+    else
+      echo "Version $FORCE_VERSION is not available"
+    fi
+  fi
 }
 
 # Function to pull the latest Docker image
 function pull_image {
   if [ -n "$FORCE_VERSION" ]; then
-    if ! version_exists "$FORCE_VERSION"; then
-      echo "Error: Version $FORCE_VERSION does not exist"
+    echo "Attempting to pull version $FORCE_VERSION of image: $IMAGE_NAME"
+    if docker pull "$IMAGE_NAME:$FORCE_VERSION"; then
+      echo "Successfully pulled version $FORCE_VERSION"
+    else
+      echo "Error: Failed to pull version $FORCE_VERSION. Please check if the version exists and you have proper access."
       exit 1
     fi
-    echo "Pulling version $FORCE_VERSION of image: $IMAGE_NAME"
-    docker pull "$IMAGE_NAME:$FORCE_VERSION"
   else
     echo "Pulling latest image: $IMAGE_NAME:$IMAGE_TAG"
-    docker pull "$IMAGE_NAME:$IMAGE_TAG"
+    if ! docker pull "$IMAGE_NAME:$IMAGE_TAG"; then
+      echo "Error: Failed to pull latest image. Please check your internet connection and Docker Hub access."
+      exit 1
+    fi
   fi
 }
 
