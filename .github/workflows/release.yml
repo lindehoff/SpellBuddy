@@ -14,9 +14,6 @@ permissions:
   packages: write
 
 env:
-  GHCR_REGISTRY: ghcr.io
-  DOCKER_HUB_REGISTRY: docker.io
-  IMAGE_NAME: lindehoff/spellbuddy
   # Add placeholder API key for build
   OPENAI_API_KEY: sk-placeholder-key-for-build-process
   OPENAI_MODEL: gpt-4o-mini
@@ -99,16 +96,13 @@ jobs:
             ### 🐳 Docker Images
             The following Docker image tags are available for this release:
 
-            **GitHub Container Registry:**
             ```bash
-            ghcr.io/lindehoff/spellbuddy:${{ steps.get_version.outputs.version }}
-            ghcr.io/lindehoff/spellbuddy:latest
-            ```
+            # Latest version
+            docker pull lindehoff/spellbuddy:${{ steps.get_version.outputs.version }}
+            docker pull lindehoff/spellbuddy:latest
 
-            **Docker Hub:**
-            ```bash
-            lindehoff/spellbuddy:${{ steps.get_version.outputs.version }}
-            lindehoff/spellbuddy:latest
+            # Major version tag (for automatic updates within major)
+            docker pull lindehoff/spellbuddy:${{ steps.get_version.outputs.version }}
             ```
             
             ### 📦 Installation
