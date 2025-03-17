@@ -1,39 +1,49 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { loginUser } from '@/lib/auth';
-import { ApiResponse } from '@/types';
 import { APIError, ValidationError } from '@/lib/errors';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { usernameOrEmail, password } = body;
 
-    if (!email || !password) {
-      throw new ValidationError('Email and password are required');
+    if (!usernameOrEmail || !password) {
+      throw new ValidationError('Username/email and password are required');
     }
 
-    const result = await loginUser(email, password);
+    const result = await loginUser(usernameOrEmail, password);
     
-    const response: ApiResponse<{ token: string }> = {
+    // Create response with user data
+    const response = NextResponse.json({
       success: true,
-      data: { token: result.token }
-    };
+      data: { 
+        user: result.user,
+        token: result.token 
+      }
+    });
 
-    return NextResponse.json(response);
+    // Set auth cookie
+    response.cookies.set('auth_token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    });
+
+    return response;
   } catch (error) {
     if (error instanceof APIError) {
-      const response: ApiResponse = {
-        success: false,
-        error: error.message
-      };
-      return NextResponse.json(response, { status: error.status });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.statusCode }
+      );
     }
 
     console.error('Login error:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: 'An unexpected error occurred'
-    };
-    return NextResponse.json(response, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'An unexpected error occurred' },
+      { status: 500 }
+    );
   }
 } 

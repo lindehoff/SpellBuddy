@@ -3,16 +3,19 @@ import * as ai from './openai';
 import * as gamification from './gamification';
 
 // Types
-export type SpellingResult = {
+export interface SpellingResult {
   misspelledWords: Array<{
     misspelled: string;
     correct: string;
     tip: string;
     severity: number;
+    position: number;
   }>;
+  totalWords: number;
+  correctCount: number;
   encouragement: string;
   overallScore: number;
-};
+}
 
 export type Exercise = {
   id: number;
@@ -20,6 +23,9 @@ export type Exercise = {
   translation?: string;
   userTranslation?: string;
   difficulty?: number;
+  completedAt?: number;
+  createdAt?: number;
+  exerciseDifficulty?: number;
 };
 
 export type Progress = {
@@ -54,6 +60,14 @@ export type Achievement = {
   achievementType: string;
   requiredValue: number;
 };
+
+export interface MisspelledWord {
+  misspelled: string;
+  correct: string;
+  tip: string;
+  severity: number;
+  position: number;
+}
 
 // Service functions
 export async function createNewExercise(userId: number): Promise<Exercise> {
@@ -314,4 +328,157 @@ async function updateDifficultyScore(
   
   // Update the difficulty score
   await repository.updateUserDifficultyScore(userId, currentScore);
+}
+
+export function evaluateSpelling(correctText: string, userText: string): SpellingResult {
+  // Normalize both texts: remove punctuation, convert to lowercase, and split into words
+  const normalizeText = (text: string) => {
+    return text
+      .toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 0);
+  };
+
+  const correctWords = normalizeText(correctText);
+  const userWords = normalizeText(userText);
+
+  // Find misspelled words
+  const misspelledWords: MisspelledWord[] = [];
+  const seenWords = new Set<string>();
+
+  // Compare each word
+  for (let i = 0; i < Math.max(correctWords.length, userWords.length); i++) {
+    const correctWord = correctWords[i];
+    const userWord = userWords[i];
+
+    // Skip if either word is missing (this is a structural/grammar issue, not spelling)
+    if (!correctWord || !userWord) continue;
+
+    // Skip common words and articles that are likely typos rather than spelling issues
+    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with']);
+    if (commonWords.has(correctWord.toLowerCase())) continue;
+
+    // Skip if the word is too short (likely a typo)
+    if (correctWord.length <= 2) continue;
+
+    // Only count each unique misspelling once
+    const key = `${correctWord}:${userWord}`;
+    if (seenWords.has(key)) continue;
+
+    // Check if the word is actually misspelled
+    if (correctWord !== userWord) {
+      // Calculate Levenshtein distance
+      const distance = levenshteinDistance(correctWord, userWord);
+      
+      // If the distance is small and the word is short, it's probably a typo
+      if (distance === 1 && correctWord.length <= 4) continue;
+
+      misspelledWords.push({
+        misspelled: userWord,
+        correct: correctWord,
+        tip: generateSpellingTip(correctWord, userWord),
+        severity: calculateSeverity(distance, correctWord.length),
+        position: i
+      });
+      seenWords.add(key);
+    }
+  }
+
+  return {
+    misspelledWords,
+    totalWords: correctWords.length,
+    correctCount: correctWords.length - misspelledWords.length,
+    encouragement: '',
+    overallScore: 0
+  };
+}
+
+// Helper function to calculate Levenshtein distance
+function levenshteinDistance(a: string, b: string): number {
+  const matrix = [];
+
+  // Initialize matrix
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  // Fill in the rest of the matrix
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+// Helper function to generate spelling tips
+function generateSpellingTip(correct: string, incorrect: string): string {
+  const distance = levenshteinDistance(correct, incorrect);
+  
+  if (distance === 1) {
+    return `Almost there! Just one letter is different.`;
+  } else if (distance <= 3) {
+    return `You're close! Focus on the spelling pattern.`;
+  } else {
+    return `Try breaking this word into smaller parts to remember it better.`;
+  }
+}
+
+// Helper function to calculate severity of the spelling mistake
+function calculateSeverity(distance: number, wordLength: number): number {
+  // Scale from 1-5, where 5 is most severe
+  const ratio = distance / wordLength;
+  if (ratio <= 0.2) return 1;
+  if (ratio <= 0.4) return 2;
+  if (ratio <= 0.6) return 3;
+  if (ratio <= 0.8) return 4;
+  return 5;
+}
+
+export async function completeExercise(exerciseId: number): Promise<void> {
+  const exercise = await repository.getExerciseById(exerciseId);
+  
+  if (!exercise) {
+    throw new Error('Exercise not found');
+  }
+  
+  // Update exercise completion status
+  await repository.updateExercise(exerciseId, {
+    completedAt: Date.now()
+  });
+  
+  // Award experience points
+  const experiencePoints = calculateExperiencePoints(exercise);
+  await repository.updateUserExperience(exercise.userId, experiencePoints);
+}
+
+function calculateExperiencePoints(exercise: repository.Exercise): number {
+  // Base points for completing an exercise
+  let points = 10;
+  
+  // Bonus points based on difficulty
+  points += (exercise.exerciseDifficulty || 1) * 5;
+  
+  // Bonus points for quick completion if completed within 5 minutes
+  if (exercise.completedAt && exercise.createdAt) {
+    const completionTime = exercise.completedAt - exercise.createdAt;
+    if (completionTime < 5 * 60 * 1000) { // 5 minutes in milliseconds
+      points += 5;
+    }
+  }
+  
+  return points;
 } 

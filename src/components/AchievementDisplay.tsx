@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Achievement } from '@/lib/service';
+import Link from 'next/link';
 
 interface AchievementDisplayProps {
   achievements: Achievement[];
@@ -20,6 +21,9 @@ export default function AchievementDisplay({
 }: AchievementDisplayProps) {
   const [showAchievements, setShowAchievements] = useState(false);
   const [newAchievements, setNewAchievements] = useState<Achievement[]>([]);
+  
+  // Filter to only show unlocked achievements
+  const unlockedAchievements = achievements.filter(a => a.unlockedAt);
   
   // Check for new achievements when the component mounts
   useEffect(() => {
@@ -98,12 +102,23 @@ export default function AchievementDisplay({
       )}
       
       {/* Recent Achievements */}
-      {achievements.length > 0 && (
+      {unlockedAchievements.length > 0 && (
         <div className="glass-card p-6 rounded-xl">
-          <h3 className="text-xl font-bold gradient-text mb-6">Recent Achievements</h3>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold gradient-text">Recent Achievements</h3>
+            <Link
+              href="/achievements"
+              className="text-cyan-400 hover:text-cyan-300 transition-colors text-sm font-medium flex items-center"
+            >
+              View All
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {achievements.map((achievement) => (
+            {unlockedAchievements.slice(0, 6).map((achievement) => (
               <div 
                 key={achievement.id} 
                 className={`p-4 rounded-xl glass-card ${achievement.isNew ? 'bg-white/20' : ''} text-center transition-all duration-300 hover:transform hover:scale-105`}
@@ -112,18 +127,18 @@ export default function AchievementDisplay({
                 <h4 className="font-bold text-cyan-300 mb-2">{achievement.name}</h4>
                 <p className="text-sm opacity-90">{achievement.description}</p>
                 <p className="text-xs opacity-70 mt-2">
-                  {new Date(achievement.unlockedAt * 1000).toLocaleDateString()}
+                  Recently Unlocked
                 </p>
               </div>
             ))}
           </div>
           
-          <button
-            onClick={() => window.location.href = '/achievements'}
-            className="mt-6 w-full bg-white/10 hover:bg-white/20 font-medium py-3 px-4 rounded-lg transition-all duration-300"
+          <Link
+            href="/achievements"
+            className="mt-6 w-full bg-white/10 hover:bg-white/20 font-medium py-3 px-4 rounded-lg transition-all duration-300 block text-center"
           >
             View All Achievements
-          </button>
+          </Link>
         </div>
       )}
     </div>

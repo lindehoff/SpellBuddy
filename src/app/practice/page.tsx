@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Exercise, SpellingResult } from '@/lib/service';
@@ -13,43 +13,8 @@ enum PracticeStep {
   SpeakTranslation,
   WriteTranslation,
   ShowResults,
-  PracticeWords
-}
-
-// Main component that ensures client-side only rendering for speech recognition
-export default function PracticePage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-  
-  // Render loading state
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
-        <div className="text-center">
-          <div className="animate-spin h-10 w-10 border-4 border-cyan-400 rounded-full border-t-transparent mx-auto mb-4"></div>
-          <p className="text-xl font-medium">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // Render nothing while redirecting
-  if (!user) {
-    return null;
-  }
-  
-  return (
-    <SpeechRecognitionProvider>
-      <PracticePageInner />
-    </SpeechRecognitionProvider>
-  );
+  PracticeWords,
+  Summary
 }
 
 // Create a component wrapper for speech recognition
@@ -60,6 +25,7 @@ function SpeechRecognitionProvider({ children }: { children: React.ReactNode }) 
     setHasMounted(true);
   }, []);
 
+  // Only render children on the client
   if (!hasMounted) {
     return <div className="flex justify-center py-4 opacity-80">Loading speech recognition...</div>;
   }
@@ -79,10 +45,87 @@ function PracticePageInner() {
   const [currentWordAttempt, setCurrentWordAttempt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [isLoadingExercise, setIsLoadingExercise] = useState(true);
+  const [isLoadingExercise, setIsLoadingExercise] = useState(false);
   const [currentWordAttempts, setCurrentWordAttempts] = useState(0);
-  const [mounted, setMounted] = useState(false);
-  const [dictationEnabled, setDictationEnabled] = useState(true);
+  const fetchedRef = useRef(false);
+  const [dictationEnabled, setDictationEnabled] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [newAchievements, setNewAchievements] = useState<{id: number, name: string, description: string, icon: string}[]>([]);
+  
+  // Initialize dictation preference from localStorage only after mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dictationEnabled');
+      setDictationEnabled(saved !== null ? saved === 'true' : true);
+    }
+  }, []);
+  
+  // Save dictation preference to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dictationEnabled', dictationEnabled.toString());
+    }
+  }, [dictationEnabled]);
+  
+  // Detect and prevent dictation in the textarea
+  useEffect(() => {
+    if (step === PracticeStep.WriteTranslation) {
+      // Function to detect rapid text input that might be from dictation
+      const handleTextareaInput = (e: Event) => {
+        const target = e.target as HTMLTextAreaElement;
+        const currentLength = target.value.length;
+        const previousLength = writtenTranslation.length;
+        
+        // If a large amount of text is added at once, it might be dictation
+        if (currentLength - previousLength > 15) {
+          // Show a warning
+          setError('Please type your translation manually. Dictation is not allowed in practice mode.');
+          
+          // Clear the error after 3 seconds
+          setTimeout(() => setError(''), 3000);
+        }
+      };
+      
+      // Add event listener to detect dictation
+      const textarea = document.querySelector('textarea');
+      if (textarea) {
+        textarea.addEventListener('input', handleTextareaInput);
+        
+        // Disable speech input methods
+        const disableSpeechInput = () => {
+          // This helps prevent some mobile dictation features
+          if (document.activeElement === textarea) {
+            (document.activeElement as HTMLElement).blur();
+            setTimeout(() => textarea.focus(), 10);
+          }
+        };
+        
+        // Listen for speech input start events
+        textarea.addEventListener('webkitspeechstart', disableSpeechInput);
+        textarea.addEventListener('speechstart', disableSpeechInput);
+        
+        // Periodically check for rapid input changes that might indicate dictation
+        const intervalCheck = setInterval(() => {
+          if (document.activeElement === textarea) {
+            const currentVal = textarea.value;
+            if (currentVal.length > writtenTranslation.length + 15) {
+              setWrittenTranslation(currentVal.substring(0, writtenTranslation.length));
+              setError('Please type your translation manually. Dictation is not allowed in practice mode.');
+              setTimeout(() => setError(''), 3000);
+            }
+          }
+        }, 500);
+        
+        // Clean up
+        return () => {
+          textarea.removeEventListener('input', handleTextareaInput);
+          textarea.removeEventListener('webkitspeechstart', disableSpeechInput);
+          textarea.removeEventListener('speechstart', disableSpeechInput);
+          clearInterval(intervalCheck);
+        };
+      }
+    }
+  }, [step, writtenTranslation]);
   
   // Use our custom speech recognition hook
   const {
@@ -93,125 +136,179 @@ function PracticePageInner() {
     resetTranscript,
     browserSupportsSpeechRecognition
   } = useSpeechRecognition();
-  
-  // Initialize dictation preference after mount
+
+  // Set loading state after component has mounted
   useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem('dictationEnabled');
-    if (saved !== null) {
-      setDictationEnabled(saved === 'true');
+    // Only set loading state if we don't have an exercise and haven't fetched yet
+    if (!exercise && !fetchedRef.current && !isLoadingExercise) {
+      console.log('Setting initial loading state');
+      setIsLoadingExercise(true);
     }
-  }, []);
-  
-  // Save dictation preference to localStorage when it changes
-  useEffect(() => {
-    if (!mounted) return;
-    localStorage.setItem('dictationEnabled', dictationEnabled.toString());
-  }, [dictationEnabled, mounted]);
+  }, [exercise, fetchedRef, isLoadingExercise]);
   
   // Load a new exercise when the component mounts
   useEffect(() => {
-    async function loadExercise() {
-      if (!user) return;
-      
+    let isMounted = true;
+    let loadingTimeout: NodeJS.Timeout | null = null;
+    
+    const loadExercise = async () => {
+      // Skip if we don't have a user, are not loading, already have an exercise, or already fetched
+      if (!user || !isLoadingExercise || exercise || fetchedRef.current) {
+        console.log('Skipping exercise load because:', {
+          noUser: !user,
+          notLoading: !isLoadingExercise,
+          hasExercise: !!exercise,
+          alreadyFetched: fetchedRef.current
+        });
+        return;
+      }
+
       try {
-        setIsLoadingExercise(true);
-        setExercise(null);
-        resetTranscript();
-        setWrittenTranslation('');
+        console.log('Starting to load exercise...');
+        fetchedRef.current = true;
         
+        // Set a timeout to prevent infinite loading
+        loadingTimeout = setTimeout(() => {
+          if (isMounted) {
+            console.log('Loading timeout reached');
+            setIsLoadingExercise(false);
+            setError('Loading timed out. Please try again.');
+          }
+        }, 10000);
+        
+        console.log('Making POST request to /api/exercises');
         const response = await fetch('/api/exercises', {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
         
+        // Clear timeout since we got a response
+        if (loadingTimeout) {
+          clearTimeout(loadingTimeout);
+          loadingTimeout = null;
+        }
+        
+        console.log('Received response:', {
+          status: response.status,
+          ok: response.ok,
+          statusText: response.statusText
+        });
+        
+        // Check if component is still mounted
+        if (!isMounted) {
+          console.log('Component unmounted during fetch, aborting');
+          return;
+        }
+        
         if (response.status === 401) {
+          console.log('Unauthorized, redirecting to login');
           router.push('/login');
           return;
         }
         
         if (!response.ok) {
-          throw new Error('Failed to load exercise');
+          throw new Error(`Failed to load exercise: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
-        setExercise(data);
+        console.log('Parsed response data:', {
+          success: data.success,
+          hasData: !!data.data,
+          exerciseId: data.data?.id
+        });
+        
+        // Check if component is still mounted
+        if (!isMounted) {
+          console.log('Component unmounted after parsing data, aborting');
+          return;
+        }
+        
+        if (!data.success || !data.data) {
+          throw new Error('Invalid response format');
+        }
+        
+        console.log('Exercise loaded successfully:', data.data.id);
+        setExercise(data.data);
         setStep(PracticeStep.ShowSwedishText);
+        setIsLoadingExercise(false);
       } catch (err) {
+        // Check if component is still mounted
+        if (!isMounted) {
+          console.log('Component unmounted during error handling, aborting');
+          return;
+        }
+        
+        console.error('Error loading exercise:', err);
         setError('Failed to load exercise. Please try again.');
-        console.error(err);
-      } finally {
+        
+        // Reset after error to allow retry
+        fetchedRef.current = false;
         setIsLoadingExercise(false);
       }
+    };
+
+    // Only load if we have a user, are loading, don't have an exercise, and haven't fetched
+    if (user && isLoadingExercise && !exercise && !fetchedRef.current) {
+      console.log('Initiating exercise load...');
+      loadExercise();
     }
-    
-    loadExercise();
-  }, [user, router, resetTranscript]);
-  
-  // Handle textarea events for dictation prevention
-  useEffect(() => {
-    const textarea = document.querySelector('textarea');
-    if (!textarea || step !== PracticeStep.WriteTranslation) return;
-    
-    const handleTextareaInput = (e: Event) => {
-      const target = e.target as HTMLTextAreaElement;
-      const currentLength = target.value.length;
-      const previousLength = writtenTranslation.length;
-      
-      if (currentLength - previousLength > 15) {
-        setError('Please type your translation manually. Dictation is not allowed in practice mode.');
-        setTimeout(() => setError(''), 3000);
-      }
-    };
-    
-    textarea.addEventListener('input', handleTextareaInput);
-    
-    const disableSpeechInput = () => {
-      if (document.activeElement === textarea) {
-        (document.activeElement as HTMLElement).blur();
-        setTimeout(() => textarea.focus(), 10);
-      }
-    };
-    
-    textarea.addEventListener('webkitspeechstart', disableSpeechInput);
-    textarea.addEventListener('speechstart', disableSpeechInput);
-    
-    const intervalCheck = setInterval(() => {
-      if (document.activeElement === textarea) {
-        const currentVal = textarea.value;
-        if (currentVal.length > writtenTranslation.length + 15) {
-          setWrittenTranslation(currentVal.substring(0, writtenTranslation.length));
-          setError('Please type your translation manually. Dictation is not allowed in practice mode.');
-          setTimeout(() => setError(''), 3000);
-        }
-      }
-    }, 500);
-    
+
+    // Cleanup function
     return () => {
-      textarea.removeEventListener('input', handleTextareaInput);
-      textarea.removeEventListener('webkitspeechstart', disableSpeechInput);
-      textarea.removeEventListener('speechstart', disableSpeechInput);
-      clearInterval(intervalCheck);
+      isMounted = false;
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+      }
+      console.log('Cleaning up exercise load effect');
     };
-  }, [step, writtenTranslation]);
-  
+  }, [user, router, exercise, isLoadingExercise]);
+
+  // Reset state when starting a new exercise
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const resetExerciseState = useCallback(() => {
+    console.log('Resetting exercise state');
+    setExercise(null);
+    setWrittenTranslation('');
+    resetTranscript();
+    setSpellingResult(null);
+    setCurrentWordIndex(0);
+    setCurrentWordAttempt('');
+    setCurrentWordAttempts(0);
+    setError('');
+    setIsLoadingExercise(false);
+    fetchedRef.current = false;
+  }, [resetTranscript]);
+
+  // Force a retry
+  const forceRetry = useCallback(() => {
+    console.log('Forcing retry');
+    setError('');
+    fetchedRef.current = false;
+    setIsLoadingExercise(true);
+  }, []);
+
   // Update spoken translation when transcript changes
   useEffect(() => {
     // We're just using transcript directly now, no need for a separate state
   }, [transcript, step]);
-  
-  // Render null until mounted to prevent hydration issues
-  if (!mounted) {
-    return null;
-  }
-  
+
   // Stop speech recognition and save the spoken translation
   const handleStopListening = async () => {
+    console.log('Handling stop listening...');
     stopListening();
     
-    if (!exercise) return;
+    if (!exercise || !exercise.id) {
+      console.error('No exercise found or exercise has no ID');
+      setError('Cannot save spoken translation: No active exercise');
+      return;
+    }
     
     try {
-      await fetch(`/api/exercises/${exercise.id}/spoken`, {
+      console.log(`Saving spoken text for exercise ${exercise.id}: "${transcript}"`);
+      
+      const response = await fetch(`/api/exercises/${exercise.id}/spoken`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,10 +316,25 @@ function PracticePageInner() {
         body: JSON.stringify({ spokenText: transcript }),
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to save spoken translation:', errorText);
+        throw new Error(`Failed to save spoken translation: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      // Check if the response has the expected format
+      if (!result.success) {
+        console.error('API returned error:', result.error);
+        throw new Error(result.error || 'Failed to save spoken translation');
+      }
+      
+      console.log('Successfully saved spoken translation, moving to write step');
       setStep(PracticeStep.WriteTranslation);
     } catch (err) {
+      console.error('Error in handleStopListening:', err);
       setError('Failed to save spoken translation. Please try again.');
-      console.error(err);
     }
   };
 
@@ -246,13 +358,19 @@ function PracticePageInner() {
       }
       
       const result = await response.json();
-      setSpellingResult(result);
       
-      if (result.misspelledWords && result.misspelledWords.length > 0) {
-        setStep(PracticeStep.ShowResults);
+      // Check if the response has the expected format
+      if (result.success && result.data) {
+        setSpellingResult(result.data);
+        
+        if (result.data.misspelledWords && result.data.misspelledWords.length > 0) {
+          setStep(PracticeStep.Summary);
+        } else {
+          // No spelling errors, go to completion
+          router.push('/progress');
+        }
       } else {
-        // No spelling errors, go to completion
-        router.push('/progress');
+        throw new Error('Invalid response format');
       }
     } catch (err) {
       setError('Failed to evaluate translation. Please try again.');
@@ -276,19 +394,38 @@ function PracticePageInner() {
     
     const currentWord = spellingResult.misspelledWords[currentWordIndex];
     
+    // Normalize both words for comparison
+    const normalizeWord = (word: string) => {
+      return word.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '');
+    };
+    
+    const attempt = normalizeWord(currentWordAttempt);
+    const correct = normalizeWord(currentWord.correct);
+    
     // Increment attempt counter
     setCurrentWordAttempts(currentWordAttempts + 1);
     
-    if (currentWordAttempt.trim().toLowerCase() === currentWord.correct.toLowerCase()) {
+    if (attempt === correct) {
       // Word is correct, mark it as learned
       try {
-        await fetch(`/api/exercises/${exercise?.id}/words`, {
+        const response = await fetch(`/api/exercises/${exercise?.id}/words`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ word: currentWord.correct }),
         });
+        
+        if (!response.ok) {
+          throw new Error('Failed to save word progress');
+        }
+        
+        const result = await response.json();
+        
+        // Check if the response has the expected format
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to save word progress');
+        }
         
         // Move to next word or finish
         if (currentWordIndex < spellingResult.misspelledWords.length - 1) {
@@ -304,13 +441,25 @@ function PracticePageInner() {
         console.error(err);
       }
     } else {
-      // Word is incorrect, show error but let them try again
-      setError(`That&apos;s not quite right. Try again!`);
-      setTimeout(() => setError(''), 2000);
+      // Word is incorrect
+      if (currentWordAttempts >= 4) { // Show answer after 5 attempts
+        // Move to next word after showing the answer
+        setTimeout(() => {
+          if (currentWordIndex < spellingResult.misspelledWords.length - 1) {
+            setCurrentWordIndex(currentWordIndex + 1);
+            setCurrentWordAttempt('');
+            setCurrentWordAttempts(0);
+          } else {
+            // All words practiced, go to progress page
+            router.push('/progress');
+          }
+        }, 2000); // Give user time to see the correct answer
+      }
     }
   };
 
   // Move to the next word after showing the answer
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const moveToNextWord = async () => {
     if (!spellingResult || !spellingResult.misspelledWords) return;
     
@@ -318,7 +467,7 @@ function PracticePageInner() {
     
     try {
       // Still record the word for future practice
-      await fetch(`/api/exercises/${exercise?.id}/words`, {
+      const response = await fetch(`/api/exercises/${exercise?.id}/words`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -326,20 +475,253 @@ function PracticePageInner() {
         body: JSON.stringify({ word: currentWord.correct }),
       });
       
+      if (!response.ok) {
+        throw new Error('Failed to save word progress');
+      }
+      
+      const result = await response.json();
+      
+      // Check if the response has the expected format
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save word progress');
+      }
+      
       // Move to next word or finish
       if (currentWordIndex < spellingResult.misspelledWords.length - 1) {
         setCurrentWordIndex(currentWordIndex + 1);
         setCurrentWordAttempt('');
         setCurrentWordAttempts(0); // Reset attempts for next word
       } else {
+        // Mark exercise as completed
+        const completeResponse = await fetch(`/api/exercises/${exercise?.id}/complete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (!completeResponse.ok) {
+          throw new Error('Failed to complete exercise');
+        }
+        
+        const completeResult = await completeResponse.json();
+        
+        if (!completeResult.success) {
+          throw new Error(completeResult.error || 'Failed to complete exercise');
+        }
+        
         // All words practiced, go to progress page
         router.push('/progress');
       }
     } catch (err) {
-      setError('Failed to save word progress. Please try again.');
+      setError('Failed to save progress. Please try again.');
       console.error(err);
     }
   };
+
+  // Component to handle speech recognition
+  const SpeakTranslationStep = () => {
+    if (!browserSupportsSpeechRecognition) {
+      return (
+        <div className="text-center">
+          <p className="text-red-500 mb-4">
+            Sorry, your browser does not support speech recognition.
+            Please use Chrome or Edge for this feature.
+          </p>
+          <button
+            onClick={() => setStep(PracticeStep.WriteTranslation)}
+            className="mt-4 px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Skip to Writing
+          </button>
+        </div>
+      );
+    }
+
+    const handleStartListening = () => {
+      try {
+        console.log('Starting speech recognition...');
+        resetTranscript();
+        startListening();
+      } catch (err) {
+        console.error('Error starting speech recognition:', err);
+        setError('Failed to start speech recognition. Please try again.');
+      }
+    };
+
+    const handleStopAndSave = async () => {
+      try {
+        console.log('Stopping speech recognition...');
+        stopListening();
+        await handleStopListening();
+      } catch (err) {
+        console.error('Error stopping speech recognition:', err);
+        setError('Failed to save spoken translation. Please try again.');
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Show the text to translate */}
+        <div className="mb-6 p-4 bg-white/10 rounded-lg">
+          <p className="text-lg font-medium practice-mode-text">{exercise?.original}</p>
+        </div>
+        
+        <div className="text-center space-y-6">
+          <div className="flex flex-col items-center space-y-4">
+            <p className="text-lg">
+              {listening ? 'Listening...' : 'Click the button and speak your translation'}
+            </p>
+            
+            <button
+              onClick={listening ? handleStopAndSave : handleStartListening}
+              className={`px-6 py-3 rounded-full text-white font-semibold transition-all ${
+                listening
+                  ? 'bg-red-500 hover:bg-red-600'
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
+            >
+              {listening ? 'Stop Speaking' : 'Start Speaking'}
+            </button>
+          </div>
+
+          {transcript && (
+            <div className="mt-4">
+              <p className="font-semibold">Your spoken translation:</p>
+              <p className="mt-2 text-lg">{transcript}</p>
+              
+              {/* Add a "Done" button when there's a transcript */}
+              <button
+                onClick={handleStopAndSave}
+                className="mt-4 px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                Done
+              </button>
+            </div>
+          )}
+
+          <div className="mt-6">
+            <button
+              onClick={() => setStep(PracticeStep.WriteTranslation)}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            >
+              Skip speaking practice
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Component to handle word practice
+  const PracticeWordsStep = () => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    
+    // Focus input when component mounts or word changes
+    useEffect(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, []);
+
+    if (!spellingResult || !spellingResult.misspelledWords) {
+      return <div>No words to practice</div>;
+    }
+
+    const currentWord = spellingResult.misspelledWords[currentWordIndex];
+    const attemptsLeft = 5 - currentWordAttempts;
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        checkWordAttempt();
+      }
+    };
+
+    return (
+      <div className="text-center space-y-6">
+        <div>
+          <p className="text-lg mb-2">Practice spelling this word:</p>
+          <p className="text-2xl font-bold mb-4">{currentWord.correct}</p>
+          <p className="text-sm text-gray-400 mb-4">Attempts left: {attemptsLeft}</p>
+        </div>
+
+        <div className="flex flex-col items-center space-y-4">
+          <input
+            ref={inputRef}
+            type="text"
+            value={currentWordAttempt}
+            onChange={(e) => setCurrentWordAttempt(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="w-64 px-4 py-2 text-lg border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Type the word..."
+            autoFocus
+          />
+
+          <button
+            onClick={checkWordAttempt}
+            className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Check
+          </button>
+        </div>
+
+        {error && (
+          <p className="text-red-500">{error}</p>
+        )}
+      </div>
+    );
+  };
+
+  // Log component state on mount
+  useEffect(() => {
+    console.log('PracticePageInner mounted with state:', {
+      user: !!user,
+      userId: user?.id,
+      step,
+      isLoadingExercise,
+      fetchedRef: fetchedRef.current,
+      exercise: !!exercise
+    });
+    
+    return () => {
+      console.log('PracticePageInner unmounting');
+    };
+  }, [user, step, isLoadingExercise, exercise]);
+  
+  // Log state changes
+  useEffect(() => {
+    console.log('State changed:', {
+      step,
+      isLoadingExercise,
+      fetchedRef: fetchedRef.current,
+      exercise: exercise?.id
+    });
+  }, [step, isLoadingExercise, exercise, user]);
+
+  // Get current streak when component mounts
+  useEffect(() => {
+    const getStreak = async () => {
+      if (!user) return;
+      
+      try {
+        const response = await fetch('/api/user/streak');
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.success && data.data) {
+          setCurrentStreak(data.data.currentStreak || 0);
+          if (data.data.newAchievements && data.data.newAchievements.length > 0) {
+            setNewAchievements(data.data.newAchievements);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching streak:', err);
+      }
+    };
+    
+    getStreak();
+  }, [user]);
 
   // Render different content based on the current step
   const renderStepContent = () => {
@@ -350,6 +732,17 @@ function PracticePageInner() {
           <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mb-6"></div>
           <p className="text-xl font-medium gradient-text">Creating your exercise...</p>
           <p className="opacity-80 mt-2">This may take a moment as we personalize it for you ✨</p>
+          
+          {error && (
+            <div className="mt-6">
+              <button 
+                onClick={forceRetry}
+                className="px-4 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
         </div>
       );
     }
@@ -380,81 +773,7 @@ function PracticePageInner() {
         );
         
       case PracticeStep.SpeakTranslation:
-        return (
-          <div className="text-center">
-            <h2 className="text-xl sm:text-2xl font-bold gradient-text mb-4 sm:mb-6">Speak your translation 🎙️</h2>
-            <div className="glass-card p-4 sm:p-6 rounded-xl mb-6 sm:mb-8">
-              <p className="opacity-90 mb-3 sm:mb-4 font-medium">Original text:</p>
-              <p className="mb-6 sm:mb-8 font-medium practice-mode-text">{exercise?.original}</p>
-              
-              <div className="flex items-center justify-center mb-4">
-                <label className="flex items-center cursor-pointer">
-                  <span className="mr-2 text-sm">Dictation:</span>
-                  <div className={`relative inline-block w-10 h-5 transition duration-200 ease-in-out rounded-full ${dictationEnabled ? 'bg-green-500' : 'bg-gray-400'}`}>
-                    <input
-                      type="checkbox"
-                      className="absolute w-0 h-0 opacity-0"
-                      checked={dictationEnabled}
-                      onChange={() => setDictationEnabled(!dictationEnabled)}
-                    />
-                    <span className={`absolute left-0 top-0 w-5 h-5 transition duration-200 ease-in-out transform ${dictationEnabled ? 'translate-x-5' : 'translate-x-0'} bg-white rounded-full shadow-md`}></span>
-                  </div>
-                </label>
-              </div>
-              
-              <div className="mb-5 sm:mb-6">
-                <p className="opacity-90 mb-2 font-medium">Your spoken translation:</p>
-                <p className="min-h-16 p-3 sm:p-4 bg-white/10 border border-white/20 rounded-lg">
-                  {transcript || "Start speaking..."}
-                </p>
-              </div>
-              
-              {!browserSupportsSpeechRecognition && (
-                <p className="text-red-300 mb-4 font-medium">
-                  ⚠️ Your browser doesn&apos;t support speech recognition.
-                  Please try a different browser like Chrome.
-                </p>
-              )}
-              
-              <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-                {!listening ? (
-                  <button
-                    onClick={dictationEnabled ? startListening : () => setStep(PracticeStep.WriteTranslation)}
-                    disabled={!browserSupportsSpeechRecognition && dictationEnabled}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105 disabled:bg-green-800/30"
-                  >
-                    {dictationEnabled ? '🎤 Start Speaking' : '⏭️ Skip to Writing'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleStopListening}
-                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105"
-                  >
-                    ⏹️ Stop Speaking
-                  </button>
-                )}
-                
-                {dictationEnabled && (
-                  <button
-                    onClick={resetTranscript}
-                    className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105"
-                  >
-                    🔄 Reset
-                  </button>
-                )}
-              </div>
-              
-              <div className="mt-5 sm:mt-6">
-                <button
-                  onClick={() => setStep(PracticeStep.WriteTranslation)}
-                  className="shine-button text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105 w-full sm:w-auto"
-                >
-                  Continue to Writing ✏️
-                </button>
-              </div>
-            </div>
-          </div>
-        );
+        return <SpeakTranslationStep />;
         
       case PracticeStep.WriteTranslation:
         return (
@@ -598,80 +917,111 @@ function PracticePageInner() {
         );
         
       case PracticeStep.PracticeWords:
-        if (!spellingResult || !spellingResult.misspelledWords || spellingResult.misspelledWords.length === 0) {
-          return null;
-        }
+        return <PracticeWordsStep />;
         
-        const currentWord = spellingResult.misspelledWords[currentWordIndex];
-        const showAnswer = currentWordAttempts >= 5;
-        
+      case PracticeStep.Summary:
         return (
           <div className="text-center">
-            <h2 className="text-xl sm:text-2xl font-bold gradient-text mb-4 sm:mb-6">
-              Practice Word {currentWordIndex + 1} of {spellingResult.misspelledWords.length} 🔤
-            </h2>
+            <h2 className="text-xl sm:text-2xl font-bold gradient-text mb-4 sm:mb-6">Exercise Summary 📊</h2>
             <div className="glass-card p-4 sm:p-6 rounded-xl mb-6 sm:mb-8">
               <div className="mb-5 sm:mb-6">
-                <p className="opacity-90 mb-2 font-medium">Remember this tip:</p>
-                <p className="mb-5 sm:mb-6 p-3 sm:p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20 text-sm sm:text-base">
-                  {currentWord.tip}
-                </p>
+                <p className="opacity-90 mb-2 font-medium">Your spelling score:</p>
+                <div className="flex justify-center items-center mb-4">
+                  <div className="text-3xl sm:text-4xl font-bold gradient-text">
+                    {spellingResult?.overallScore}/10
+                  </div>
+                </div>
                 
-                <p className="opacity-90 mb-2 font-medium">You spelled it as:</p>
-                <p className="text-base sm:text-lg mb-5 sm:mb-6 line-through text-red-300 font-medium">
-                  {currentWord.misspelled}
-                </p>
+                <div className="flex justify-center items-center mb-4 bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/20">
+                  <div className="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <span className="text-xl font-bold text-yellow-400">
+                      +{Math.round(spellingResult?.overallScore || 0) * 10} XP Earned!
+                    </span>
+                  </div>
+                </div>
                 
-                {showAnswer ? (
-                  <div className="mb-5 sm:mb-6">
-                    <p className="opacity-90 mb-2 font-medium">The correct spelling is:</p>
-                    <p className="text-xl sm:text-2xl mb-5 sm:mb-6 text-green-300 font-bold">
-                      {currentWord.correct}
-                    </p>
+                {currentStreak > 0 && (
+                  <div className="flex justify-center items-center mb-4 bg-orange-500/10 p-3 rounded-lg border border-orange-500/20">
+                    <div className="flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                      </svg>
+                      <span className="text-xl font-bold text-orange-400">
+                        {currentStreak} Day Streak! 🔥
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {newAchievements.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold gradient-text mb-3">New Achievements Unlocked! 🏆</h3>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {newAchievements.map((achievement, index) => (
+                        <div key={index} className="bg-purple-500/10 p-3 rounded-lg border border-purple-500/20 max-w-xs">
+                          <div className="flex items-center mb-2">
+                            <span className="text-2xl mr-2">{achievement.icon}</span>
+                            <span className="font-bold text-purple-300">{achievement.name}</span>
+                          </div>
+                          <p className="text-sm opacity-90">{achievement.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <p className="text-base sm:text-lg mb-5 sm:mb-6 italic font-medium">
+                  {spellingResult?.encouragement}
+                </p>
+              </div>
+              
+              {spellingResult?.misspelledWords && spellingResult.misspelledWords.length > 0 ? (
+                <div>
+                  <h3 className="text-lg sm:text-xl font-semibold gradient-text mb-4">Words to practice:</h3>
+                  <ul className="mb-5 sm:mb-6">
+                    {spellingResult.misspelledWords.map((word, index) => (
+                      <li key={index} className="mb-4 p-3 sm:p-4 glass-card bg-red-500/10 rounded-lg border border-red-500/20">
+                        <p className="font-semibold">
+                          <span className="line-through text-red-300">{word.misspelled}</span>
+                          {' → '}
+                          <span className="text-green-300">{word.correct}</span>
+                        </p>
+                        <p className="opacity-90 mt-1 text-sm sm:text-base">{word.tip}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button
-                      onClick={moveToNextWord}
-                      className="shine-button text-white font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-lg text-base sm:text-lg transition-all duration-300 hover:scale-105 w-full sm:w-auto"
+                      onClick={startPracticingWords}
+                      className="shine-button text-white font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-lg text-base sm:text-lg transition-all duration-300 hover:scale-105"
                     >
-                      {currentWordIndex < spellingResult.misspelledWords.length - 1 ? 'Next Word ➡️' : 'Finish Practice 🎉'}
+                      Practice These Words 🏋️‍♀️
+                    </button>
+                    
+                    <button
+                      onClick={completeExercise}
+                      className="bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-lg text-base sm:text-lg transition-all duration-300 hover:scale-105"
+                    >
+                      Complete Exercise ✅
                     </button>
                   </div>
-                ) : (
-                  <>
-                    <p className="opacity-90 mb-2 font-medium">Now try to spell it correctly:</p>
-                    <p className="text-sm opacity-70 mb-2">Attempt {currentWordAttempts + 1} of 5</p>
-                    <input
-                      type="text"
-                      value={currentWordAttempt}
-                      onChange={(e) => setCurrentWordAttempt(e.target.value)}
-                      className="w-full p-3 sm:p-4 bg-white/10 border border-white/20 rounded-lg text-base sm:text-lg text-center text-white placeholder-white/50"
-                      placeholder="Type the correct spelling..."
-                    />
-                    
-                    {error && (
-                      <p className="text-red-300 mt-4 mb-2 font-medium">{error}</p>
-                    )}
-                    
-                    <div className="mt-4 flex flex-wrap justify-center gap-3 sm:gap-4">
-                      <button
-                        onClick={checkWordAttempt}
-                        disabled={!currentWordAttempt.trim()}
-                        className="shine-button text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105 disabled:opacity-50"
-                      >
-                        Check ✓
-                      </button>
-                      
-                      {currentWordAttempts >= 2 && (
-                        <button
-                          onClick={() => setCurrentWordAttempts(5)} // Force show answer
-                          className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105"
-                        >
-                          Show Answer 👁️
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-lg mb-5 sm:mb-6 font-medium">Great job! No spelling errors found. 🎉</p>
+                  <button
+                    onClick={completeExercise}
+                    className="shine-button text-white font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-lg text-base sm:text-lg transition-all duration-300 hover:scale-105 inline-block"
+                  >
+                    Complete Exercise ✅
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -681,8 +1031,57 @@ function PracticePageInner() {
     }
   };
 
+  // Mark exercise as completed and navigate to progress page
+  const completeExercise = async () => {
+    if (!exercise || !exercise.id) return;
+    
+    try {
+      // Mark exercise as complete
+      const response = await fetch(`/api/exercises/${exercise.id}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to complete exercise');
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to complete exercise');
+      }
+      
+      // Update streak
+      const streakResponse = await fetch('/api/user/streak', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (streakResponse.ok) {
+        const streakData = await streakResponse.json();
+        if (streakData.success && streakData.data) {
+          setCurrentStreak(streakData.data.currentStreak || 0);
+          if (streakData.data.newAchievements && streakData.data.newAchievements.length > 0) {
+            setNewAchievements(streakData.data.newAchievements);
+          }
+        }
+      }
+      
+      // Navigate to progress page
+      router.push('/progress');
+    } catch (err) {
+      setError('Failed to complete exercise. Please try again.');
+      console.error(err);
+    }
+  };
+
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+    <>
       {/* Decorative elements */}
       <div className="absolute top-40 left-10 sm:left-20 w-48 sm:w-64 h-48 sm:h-64 bg-cyan-500/20 rounded-full filter blur-3xl animate-pulse-slow"></div>
       <div className="absolute bottom-20 right-10 sm:right-20 w-64 sm:w-80 h-64 sm:h-80 bg-indigo-500/20 rounded-full filter blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
@@ -713,6 +1112,62 @@ function PracticePageInner() {
         
         {renderStepContent()}
       </div>
-    </div>
+    </>
+  );
+}
+
+// Main component that ensures client-side only rendering for speech recognition
+export default function PracticePage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [retryCount, setRetryCount] = useState(0);
+  
+  // Force a retry by incrementing the retry count
+  const handleRetry = useCallback(() => {
+    setRetryCount(prev => prev + 1);
+    console.log('Forcing retry, count:', retryCount + 1);
+  }, [retryCount]);
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+  
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-4 border-cyan-400 rounded-full border-t-transparent mx-auto mb-4"></div>
+          <p className="text-xl font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return null; // Will redirect in the useEffect
+  }
+  
+  return (
+    <SpeechRecognitionProvider>
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 relative">
+        {/* Simple retry button */}
+        <div className="absolute top-4 right-4 z-20">
+          <button
+            onClick={handleRetry}
+            className="p-2 bg-cyan-500 hover:bg-cyan-600 rounded-full transition-colors"
+            title="Refresh practice"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+        
+        <PracticePageInner key={`practice-${retryCount}`} />
+      </div>
+    </SpeechRecognitionProvider>
   );
 } 

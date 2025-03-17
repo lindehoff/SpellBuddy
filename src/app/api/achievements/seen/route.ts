@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import * as gamification from '@/lib/gamification';
+import { ApiResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,29 +12,38 @@ export async function POST(request: NextRequest) {
     const { achievementIds } = await request.json();
     
     if (!Array.isArray(achievementIds) || achievementIds.length === 0) {
-      return NextResponse.json(
-        { error: 'Achievement IDs are required' },
-        { status: 400 }
-      );
+      const response: ApiResponse = {
+        success: false,
+        error: 'Achievement IDs are required'
+      };
+      return NextResponse.json(response, { status: 400 });
     }
     
     // Mark achievements as seen
     await gamification.markAchievementsSeen(user.id, achievementIds);
     
-    return NextResponse.json({ success: true });
+    const response: ApiResponse<null> = {
+      success: true,
+      data: null
+    };
+    
+    return NextResponse.json(response);
   } catch (error: Error | unknown) {
     console.error('Error marking achievements as seen:', error);
     
     if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      const response: ApiResponse = {
+        success: false,
+        error: 'Authentication required'
+      };
+      return NextResponse.json(response, { status: 401 });
     }
     
-    return NextResponse.json(
-      { error: 'Failed to mark achievements as seen' },
-      { status: 500 }
-    );
+    const response: ApiResponse = {
+      success: false,
+      error: 'Failed to mark achievements as seen'
+    };
+    
+    return NextResponse.json(response, { status: 500 });
   }
 } 

@@ -3,34 +3,28 @@ import { getCurrentAdmin } from '@/lib/admin-auth';
 import { ApiResponse } from '@/types';
 import { APIError, AuthenticationError } from '@/lib/errors';
 
-export async function GET() {
+export async function GET(): Promise<NextResponse<ApiResponse>> {
   try {
     const admin = await getCurrentAdmin();
     
     if (!admin) {
       throw new AuthenticationError('Not authenticated');
     }
-
-    const response: ApiResponse<typeof admin> = {
+    
+    return NextResponse.json({
       success: true,
       data: admin
-    };
-
-    return NextResponse.json(response);
+    });
   } catch (error) {
     if (error instanceof APIError) {
-      const response: ApiResponse = {
-        success: false,
-        error: error.message
-      };
-      return NextResponse.json(response, { status: error.status });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.statusCode }
+      );
     }
-
-    console.error('Error fetching admin data:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: 'An unexpected error occurred'
-    };
-    return NextResponse.json(response, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 } 

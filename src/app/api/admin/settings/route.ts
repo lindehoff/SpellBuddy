@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { ApiResponse } from '@/types';
 import { APIError } from '@/lib/errors';
@@ -45,34 +45,27 @@ async function getCurrentSettings() {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse>> {
   try {
-    // Verify admin authentication
-    await requireAdmin();
+    await requireAdmin(request);
 
-    const settings = await getCurrentSettings();
-
-    const response: ApiResponse<typeof settings> = {
+    return NextResponse.json({
       success: true,
-      data: settings
-    };
-
-    return NextResponse.json(response);
+      data: {
+        message: 'Settings management is coming soon'
+      }
+    });
   } catch (error) {
     if (error instanceof APIError) {
-      const response: ApiResponse = {
-        success: false,
-        error: error.message
-      };
-      return NextResponse.json(response, { status: error.status });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.statusCode }
+      );
     }
-
-    console.error('Error fetching settings:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: 'An unexpected error occurred'
-    };
-    return NextResponse.json(response, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 

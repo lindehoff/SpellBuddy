@@ -1,17 +1,21 @@
 // Remove the createHmac import if it's not being used
 // Add any necessary imports for JWT functionality
 
-interface TokenPayload {
-  username: string;
-  exp: number;
-}
+// Implementing minimal JWT functions for Edge Runtime
 
 // Simple base64 encoding/decoding that works in Edge Runtime
-function base64Encode(str: string): string {
-  return btoa(str);
+function base64UrlEncode(str: string): string {
+  return btoa(str)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 
-function base64Decode(str: string): string {
+function base64UrlDecode(str: string): string {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) {
+    str += '=';
+  }
   return atob(str);
 }
 
@@ -32,47 +36,57 @@ async function createSignature(message: string, secret: string): Promise<string>
     encoder.encode(message)
   );
 
-  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+  return base64UrlEncode(String.fromCharCode(...new Uint8Array(signature)));
 }
 
-// Simple token verification that works in Edge Runtime
-async function verifySignature(message: string, signature: string, secret: string): Promise<boolean> {
-  const expectedSignature = await createSignature(message, secret);
-  return signature === expectedSignature;
+export interface JwtPayload {
+  [key: string]: unknown;
+  exp?: number;
 }
 
-export async function signJwt(payload: { username: string }, secret: string): Promise<string> {
-  const tokenPayload: TokenPayload = {
-    username: payload.username,
-    exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+export async function signJwt(payload: JwtPayload, secret: string): Promise<string> {
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT'
   };
-
-  const payloadString = JSON.stringify(tokenPayload);
-  const base64Payload = base64Encode(payloadString);
-  const signature = await createSignature(base64Payload, secret);
-
-  return `${base64Payload}.${signature}`;
+  
+  // Add expiration if not present
+  if (!payload.exp) {
+    payload.exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24 hours
+  }
+  
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const message = `${encodedHeader}.${encodedPayload}`;
+  const signature = await createSignature(message, secret);
+  
+  return `${message}.${signature}`;
 }
 
-export async function verifyJwt(token: string, secret: string): Promise<TokenPayload | null> {
+export async function verifyJwt<T extends JwtPayload>(token: string, secret: string): Promise<T | null> {
   try {
-    const [payloadBase64, signature] = token.split('.');
+    const [headerB64, payloadB64, signatureB64] = token.split('.');
+    
+    if (!headerB64 || !payloadB64 || !signatureB64) {
+      return null;
+    }
     
     // Verify signature
-    const isValid = await verifySignature(payloadBase64, signature, secret);
-    if (!isValid) {
+    const message = `${headerB64}.${payloadB64}`;
+    const expectedSignature = await createSignature(message, secret);
+    
+    if (signatureB64 !== expectedSignature) {
       return null;
     }
-
+    
     // Decode payload
-    const payloadString = base64Decode(payloadBase64);
-    const payload = JSON.parse(payloadString) as TokenPayload;
-
+    const payload = JSON.parse(base64UrlDecode(payloadB64)) as T;
+    
     // Check expiration
-    if (payload.exp < Date.now()) {
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
       return null;
     }
-
+    
     return payload;
   } catch (error) {
     console.error('Token verification error:', error);

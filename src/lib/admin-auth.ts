@@ -1,15 +1,14 @@
 import { cookies } from 'next/headers';
 import { AuthenticationError } from './errors';
 import { signJwt, verifyJwt } from './edge-jwt';
+import { NextRequest } from 'next/server';
+import { APIError } from './errors';
+import { AdminData } from '@/types';
 
 // Get environment variables with defaults to prevent undefined
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || '';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-
-export interface AdminData {
-  username: string;
-}
 
 // Verify admin credentials exist
 export function verifyAdminConfig() {
@@ -24,14 +23,6 @@ export async function loginAdmin(
   password: string
 ): Promise<{ admin: AdminData; token: string }> {
   verifyAdminConfig();
-
-  // Debug log for verification
-  console.log('Verifying admin credentials:', {
-    providedUsername: username,
-    expectedUsername: ADMIN_USERNAME,
-    usernameMatch: username === ADMIN_USERNAME,
-    passwordMatch: password === ADMIN_PASSWORD
-  });
 
   // Check username
   if (username !== ADMIN_USERNAME) {
@@ -49,14 +40,9 @@ export async function loginAdmin(
     ADMIN_JWT_SECRET
   );
 
-  // Debug log for token
-  console.log('Generated admin token:', {
-    tokenLength: token.length,
-    payload: { username: ADMIN_USERNAME }
-  });
-
   return {
     admin: {
+      id: 1,
       username: ADMIN_USERNAME
     },
     token
@@ -68,33 +54,20 @@ export async function verifyAdminToken(token: string): Promise<AdminData | null>
   verifyAdminConfig();
 
   try {
-    // Debug log for token verification
-    console.log('Verifying admin token:', {
-      tokenLength: token.length,
-      jwtSecretLength: ADMIN_JWT_SECRET.length
-    });
-
     const payload = await verifyJwt(token, ADMIN_JWT_SECRET);
     if (!payload) {
-      console.log('Token verification failed');
       return null;
     }
-    
-    // Debug log for decoded token
-    console.log('Decoded admin token:', {
-      decodedUsername: payload.username,
-      expectedUsername: ADMIN_USERNAME,
-      usernameMatch: payload.username === ADMIN_USERNAME,
-      expiresAt: new Date(payload.exp).toISOString()
-    });
     
     // Verify username still matches env var
     if (payload.username !== ADMIN_USERNAME) {
-      console.log('Username mismatch in token');
       return null;
     }
 
-    return { username: ADMIN_USERNAME };
+    return { 
+      id: 1,
+      username: ADMIN_USERNAME 
+    };
   } catch (error) {
     console.error('Token verification error:', error);
     return null;
@@ -107,7 +80,6 @@ export async function getCurrentAdmin(): Promise<AdminData | null> {
   const token = cookieStore.get('admin_auth_token')?.value;
   
   if (!token) {
-    console.log('No admin token found in cookies');
     return null;
   }
   
@@ -115,12 +87,17 @@ export async function getCurrentAdmin(): Promise<AdminData | null> {
 }
 
 // Middleware to require admin authentication
-export async function requireAdmin(): Promise<AdminData> {
-  const admin = await getCurrentAdmin();
+export async function requireAdmin(request: NextRequest): Promise<AdminData> {
+  const token = request.cookies.get('admin_auth_token')?.value;
   
-  if (!admin) {
-    throw new AuthenticationError('Admin authentication required');
+  if (!token) {
+    throw new APIError('Unauthorized', 401);
   }
-  
+
+  const admin = await verifyAdminToken(token);
+  if (!admin) {
+    throw new APIError('Unauthorized', 401);
+  }
+
   return admin;
 } 
