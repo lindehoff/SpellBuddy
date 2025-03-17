@@ -33,4 +33,7 @@ module.exports = {
       ],
     ],
   },
+  ignores: [
+    (commit) => commit.startsWith('chore(release)')
+  ]
 }; 
