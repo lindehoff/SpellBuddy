@@ -1,3 +1,23 @@
+# [2.0.0](https://github.com/lindehoff/SpellBuddy/compare/v1.3.1...v2.0.0) (2025-03-17)
+
+
+### Features
+
+* **ci:** reorganize github workflows for better automation ([b7b410a](https://github.com/lindehoff/SpellBuddy/commit/b7b410a577103c25ae2927802a0201402085d70e))
+* **ci:** reorganize github workflows for better automation ([44389fd](https://github.com/lindehoff/SpellBuddy/commit/44389fdbfd6a868691eb6ee23635b640b023a267))
+
+
+### BREAKING CHANGES
+
+* **ci:** Complete restructure of CI/CD pipeline into three focused workflows:
+- ci.yml: Basic CI pipeline with tests and build
+- docker-build.yml: Reusable Docker workflow
+- release.yml: Semantic versioning and release management
+* **ci:** Complete restructure of CI/CD pipeline into three focused workflows:
+- ci.yml: Basic CI pipeline with tests and build
+- docker-build.yml: Reusable Docker workflow
+- release.yml: Semantic versioning and release management
+
 ## [1.3.1](https://github.com/lindehoff/SpellBuddy/compare/v1.3.0...v1.3.1) (2025-03-17)
 
 
