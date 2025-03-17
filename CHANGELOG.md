@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/lindehoff/SpellBuddy/compare/v3.1.0...v3.2.0) (2025-03-17)
+
+
+### Features
+
+* **docker:** add multi-arch support and simplify versioning ([913f293](https://github.com/lindehoff/SpellBuddy/commit/913f2939cafdd01e7569aaa8d23dc39495392b37))
+
 # [3.1.0](https://github.com/lindehoff/SpellBuddy/compare/v3.0.0...v3.1.0) (2025-03-17)
 
 
